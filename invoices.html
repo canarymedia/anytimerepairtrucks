@@ -1,0 +1,459 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-receipt"></i> Invoices</h2>
+
+<div class="card-custom">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" class="form-control form-control-custom" id="invSearch" placeholder="Search invoices...">
+                <button class="btn btn-primary-custom" onclick="searchInvoices()"><i class="bi bi-search"></i></button>
+                <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="bi bi-x"></i></button>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            {% if not is_cashier %}
+            <button class="btn btn-orange-custom" onclick="loadFromWO()"><i class="bi bi-arrow-down-circle"></i> Load from WO</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% if not is_cashier %}
+<div class="card-custom">
+    <h5 class="card-title">Invoice Details</h5>
+    <form id="invForm">
+        <input type="hidden" id="invId" value="">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Invoice #</label>
+                <input type="text" class="form-control form-control-custom" id="invNo" value="{{ next_invoice_no }}" readonly>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-control form-control-custom" id="invDate" value="{{ now.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Customer</label>
+                <input type="text" class="form-control form-control-custom" id="invCustomer" placeholder="Customer name">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Truck #</label>
+                <input type="text" class="form-control form-control-custom" id="invTruck" placeholder="Truck number">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">VIN</label>
+                <input type="text" class="form-control form-control-custom" id="invVin" placeholder="VIN">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Work Order ID</label>
+                <input type="text" class="form-control form-control-custom" id="invWOId" placeholder="WO ID">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Labor Cost ($)</label>
+                <input type="number" class="form-control form-control-custom" id="invLabor" value="0" step="0.01">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tax Rate (%)</label>
+                <input type="number" class="form-control form-control-custom" id="invTaxRate" value="7.30" step="0.01">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Amount Paid</label>
+                <input type="number" class="form-control form-control-custom" id="invPaid" value="0" step="0.01">
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card-custom">
+    <h5 class="card-title">Items</h5>
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input type="text" class="form-control form-control-custom" id="invItemDesc" placeholder="Description">
+        </div>
+        <div class="col-md-2">
+            <select class="form-control form-control-custom part-select" id="invItemPart">
+                <option value="">Select Part...</option>
+                {% for part in parts %}
+                <option value="{{ part.part_number }}">{{ part.part_number }} - {{ part.description }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-1">
+            <input type="number" class="form-control form-control-custom" id="invItemQty" value="1" step="0.1">
+        </div>
+        <div class="col-md-1">
+            <input type="number" class="form-control form-control-custom" id="invItemHours" value="0" step="0.1">
+        </div>
+        <div class="col-md-2">
+            <input type="number" class="form-control form-control-custom" id="invItemRate" value="0" step="0.01">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success-custom w-100" onclick="addInvItem()"><i class="bi bi-plus"></i> Add</button>
+        </div>
+    </div>
+    <div class="row mt-2">
+        <div class="col-md-12">
+            <div class="form-check">
+                <input class="form-check-input" type="checkbox" id="invItemLabor">
+                <label class="form-check-label" for="invItemLabor">This is Labor</label>
+            </div>
+        </div>
+    </div>
+    <div class="table-responsive-custom mt-3">
+        <table class="table table-custom table-sm" id="invItemsTable">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Part #</th>
+                    <th>Qty</th>
+                    <th>Hours</th>
+                    <th>Rate</th>
+                    <th>Amount</th>
+                    <th>Labor</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="invItemsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card-custom">
+    <div class="row">
+        <div class="col-md-12">
+            <button class="btn btn-primary-custom" onclick="saveInvoice()"><i class="bi bi-save"></i> Save</button>
+            <button class="btn btn-orange-custom" onclick="updateInvoice()"><i class="bi bi-pencil"></i> Update</button>
+            {% if can_print %}
+            <button class="btn btn-info" onclick="printInvoice()"><i class="bi bi-printer"></i> Print PDF</button>
+            {% endif %}
+            <button class="btn btn-secondary" onclick="clearInvoice()"><i class="bi bi-eraser"></i> Clear</button>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card-custom">
+    <h5 class="card-title text-muted">Invoice Details (View Only)</h5>
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Cashiers can only view invoices. No editing or financial data is visible.
+    </div>
+</div>
+{% endif %}
+
+<div class="card-custom">
+    <h5 class="card-title">Invoices List</h5>
+    <div class="table-responsive-custom">
+        <table class="table table-custom" id="invListTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Invoice #</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Truck</th>
+                    <th>VIN</th>
+                    <th>{% if not is_cashier %}Total{% else %}Status{% endif %}</th>
+                </tr>
+            </thead>
+            <tbody id="invListBody">
+                <tr><td colspan="7" class="text-muted">Loading invoices...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let invItems = [];
+let partData = {{ parts|tojson }};
+let isCashier = {{ is_cashier|tojson }};
+
+function addInvItem() {
+    if (isCashier) {
+        alert('Cashiers cannot add items');
+        return;
+    }
+    const desc = document.getElementById('invItemDesc').value.trim();
+    const part = document.getElementById('invItemPart').value;
+    const qty = parseFloat(document.getElementById('invItemQty').value) || 1;
+    const hours = parseFloat(document.getElementById('invItemHours').value) || 0;
+    const rate = parseFloat(document.getElementById('invItemRate').value) || 0;
+    const isLabor = document.getElementById('invItemLabor').checked;
+
+    if (!desc) {
+        alert('Enter item description');
+        return;
+    }
+
+    const amount = (qty * rate) + (hours * rate);
+    invItems.push({description: desc, part_number: part, qty, hours, rate, amount, is_labor: isLabor ? 1 : 0});
+    renderInvItems();
+
+    document.getElementById('invItemDesc').value = '';
+    document.getElementById('invItemPart').value = '';
+    document.getElementById('invItemQty').value = '1';
+    document.getElementById('invItemHours').value = '0';
+    document.getElementById('invItemRate').value = '0';
+    document.getElementById('invItemLabor').checked = false;
+}
+
+function renderInvItems() {
+    const tbody = document.getElementById('invItemsBody');
+    tbody.innerHTML = '';
+    invItems.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.description}</td>
+            <td>${item.part_number || ''}</td>
+            <td>${item.qty}</td>
+            <td>${item.hours ? item.hours.toFixed(2) : ''}</td>
+            <td>${isCashier ? '***' : '$' + item.rate.toFixed(2)}</td>
+            <td>${isCashier ? '***' : '$' + item.amount.toFixed(2)}</td>
+            <td>${item.is_labor ? 'Yes' : ''}</td>
+            <td>${!isCashier ? `<button class="btn btn-sm btn-danger" onclick="removeInvItem(${index})"><i class="bi bi-x"></i></button>` : ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function removeInvItem(index) {
+    if (isCashier) return;
+    invItems.splice(index, 1);
+    renderInvItems();
+}
+
+function getInvData() {
+    return {
+        invoice_no: document.getElementById('invNo').value,
+        invoice_date: document.getElementById('invDate').value,
+        customer_name: document.getElementById('invCustomer').value.trim(),
+        truck_no: document.getElementById('invTruck').value.trim(),
+        vin: document.getElementById('invVin').value.trim().toUpperCase(),
+        paid: parseFloat(document.getElementById('invPaid').value) || 0,
+        tax_rate: parseFloat(document.getElementById('invTaxRate').value) || 7.30,
+        labor: parseFloat(document.getElementById('invLabor').value) || 0,
+        work_order_id: document.getElementById('invWOId').value.trim() || null
+    };
+}
+
+function saveInvoice() {
+    if (isCashier) {
+        alert('Cashiers cannot save invoices');
+        return;
+    }
+    const data = getInvData();
+    if (!data.customer_name) {
+        alert('Customer name is required');
+        return;
+    }
+    if (invItems.length === 0) {
+        alert('Add at least one item');
+        return;
+    }
+    data.items = invItems;
+    data.id = null;
+
+    fetch('/api/invoice', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            clearInvoice();
+            loadInvoices();
+        } else {
+            alert(data.error || 'Error saving');
+        }
+    });
+}
+
+function updateInvoice() {
+    if (isCashier) {
+        alert('Cashiers cannot update invoices');
+        return;
+    }
+    const id = document.getElementById('invId').value;
+    if (!id) {
+        alert('Select an invoice to update');
+        return;
+    }
+    const data = getInvData();
+    if (!data.customer_name) {
+        alert('Customer name is required');
+        return;
+    }
+    if (invItems.length === 0) {
+        alert('Add at least one item');
+        return;
+    }
+    data.items = invItems;
+    data.id = parseInt(id);
+
+    fetch('/api/invoice', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            clearInvoice();
+            loadInvoices();
+        } else {
+            alert(data.error || 'Error updating');
+        }
+    });
+}
+
+function clearInvoice() {
+    if (isCashier) return;
+    document.getElementById('invId').value = '';
+    document.getElementById('invNo').value = '{{ next_invoice_no }}';
+    document.getElementById('invDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('invCustomer').value = '';
+    document.getElementById('invTruck').value = '';
+    document.getElementById('invVin').value = '';
+    document.getElementById('invPaid').value = '0';
+    document.getElementById('invTaxRate').value = '7.30';
+    document.getElementById('invLabor').value = '0';
+    document.getElementById('invWOId').value = '';
+    document.getElementById('invItemDesc').value = '';
+    document.getElementById('invItemPart').value = '';
+    document.getElementById('invItemQty').value = '1';
+    document.getElementById('invItemHours').value = '0';
+    document.getElementById('invItemRate').value = '0';
+    document.getElementById('invItemLabor').checked = false;
+    invItems = [];
+    renderInvItems();
+    loadInvoices();
+}
+
+function loadInvoices() {
+    const search = document.getElementById('invSearch').value;
+    fetch(`/api/invoices?search=${encodeURIComponent(search)}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('invListBody');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No invoices found</td></tr>';
+                return;
+            }
+            data.forEach(inv => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${inv.id}</td>
+                    <td>${inv.invoice_no}</td>
+                    <td>${inv.invoice_date}</td>
+                    <td>${inv.customer_name}</td>
+                    <td>${inv.truck_no || ''}</td>
+                    <td>${inv.vin || ''}</td>
+                    <td>${isCashier ? 'View Only' : '$' + inv.total.toFixed(2)}</td>
+                `;
+                tr.style.cursor = 'pointer';
+                tr.onclick = () => loadInvoice(inv.id);
+                tbody.appendChild(tr);
+            });
+        });
+}
+
+function loadInvoice(id) {
+    fetch(`/api/invoice/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            const inv = data.invoice;
+            document.getElementById('invId').value = inv.id;
+            document.getElementById('invNo').value = inv.invoice_no;
+            document.getElementById('invDate').value = inv.invoice_date;
+            document.getElementById('invCustomer').value = inv.customer_name;
+            document.getElementById('invTruck').value = inv.truck_no || '';
+            document.getElementById('invVin').value = inv.vin || '';
+            document.getElementById('invPaid').value = isCashier ? 0 : (inv.paid || 0);
+            document.getElementById('invTaxRate').value = isCashier ? 0 : (inv.tax_rate || 7.30);
+            document.getElementById('invLabor').value = isCashier ? 0 : (inv.labor || 0);
+            document.getElementById('invWOId').value = inv.work_order_id || '';
+
+            invItems = data.items.map(item => ({
+                description: item.description,
+                part_number: item.part_number,
+                qty: item.qty,
+                hours: item.hours,
+                rate: isCashier ? 0 : item.rate,
+                amount: isCashier ? 0 : item.amount,
+                is_labor: item.is_labor
+            }));
+            renderInvItems();
+        });
+}
+
+function loadFromWO() {
+    if (isCashier) {
+        alert('Cashiers cannot load from work orders');
+        return;
+    }
+    const woId = document.getElementById('invWOId').value.trim();
+    if (!woId) {
+        alert('Enter a Work Order ID first');
+        return;
+    }
+
+    fetch(`/api/workorder/${woId}/load_invoice`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('invCustomer').value = data.customer_name;
+            document.getElementById('invTruck').value = data.truck_no || '';
+            document.getElementById('invVin').value = data.vin || '';
+
+            invItems = data.items.map(item => ({
+                description: item.description,
+                part_number: item.part_number,
+                qty: item.qty,
+                hours: item.hours,
+                rate: item.rate,
+                amount: item.amount,
+                is_labor: 0
+            }));
+            renderInvItems();
+            alert(`Loaded ${data.items.length} items from Work Order ${woId}`);
+        });
+}
+
+function searchInvoices() {
+    loadInvoices();
+}
+
+function clearSearch() {
+    document.getElementById('invSearch').value = '';
+    loadInvoices();
+}
+
+function printInvoice() {
+    const id = document.getElementById('invId').value;
+    if (!id) {
+        alert('Select an invoice to print');
+        return;
+    }
+    window.open(`/api/invoice/${id}/pdf`, '_blank');
+}
+
+document.getElementById('invItemPart').addEventListener('change', function() {
+    const part = this.value;
+    if (part) {
+        const found = partData.find(p => p.part_number === part);
+        if (found) {
+            document.getElementById('invItemDesc').value = found.description;
+            document.getElementById('invItemRate').value = found.rate;
+        }
+    }
+});
+
+document.getElementById('invVin').addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+});
+
+loadInvoices();
+</script>
+{% endblock %}

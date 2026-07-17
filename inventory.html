@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-box"></i> Inventory Management</h2>
+
+<div class="card-custom">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" class="form-control form-control-custom" id="invSearch" placeholder="Search parts...">
+                <button class="btn btn-primary-custom" onclick="searchInventory()"><i class="bi bi-search"></i></button>
+                <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="bi bi-x"></i></button>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-danger" onclick="showLowStock()"><i class="bi bi-exclamation-triangle"></i> Low Stock</button>
+            {% if can_print and user.role != 'mechanic' %}
+            <button class="btn btn-orange-custom" onclick="printInventory()"><i class="bi bi-printer"></i> Print</button>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+<div class="card-custom">
+    <h5 class="card-title">Part Details</h5>
+    <form id="invForm">
+        <input type="hidden" id="invId" value="">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Part Number</label>
+                <input type="text" class="form-control form-control-custom" id="invPart" placeholder="Part number">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Description</label>
+                <input type="text" class="form-control form-control-custom" id="invDesc" placeholder="Description">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Engine Type</label>
+                <select class="form-control form-control-custom" id="invEngine">
+                    {% for engine in engine_types %}
+                    <option value="{{ engine }}">{{ engine }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Barcode</label>
+                <input type="text" class="form-control form-control-custom" id="invBarcode" placeholder="Barcode">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Stock</label>
+                <input type="number" class="form-control form-control-custom" id="invStock" value="0">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Reorder Point</label>
+                <input type="number" class="form-control form-control-custom" id="invReorder" value="5">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Rate ($)</label>
+                <input type="number" class="form-control form-control-custom" id="invRate" value="0" step="0.01">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label">Remark</label>
+                <input type="text" class="form-control form-control-custom" id="invRemark" placeholder="Remark">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Scan</label>
+                <input type="text" class="form-control form-control-custom" id="scanInput" placeholder="Scan barcode">
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card-custom">
+    <div class="row">
+        <div class="col-md-12">
+            <button class="btn btn-success-custom" onclick="savePart()"><i class="bi bi-plus"></i> Add</button>
+            <button class="btn btn-primary-custom" onclick="updatePart()"><i class="bi bi-pencil"></i> Update</button>
+            <button class="btn btn-danger" onclick="deletePart()"><i class="bi bi-trash"></i> Delete</button>
+            <button class="btn btn-secondary" onclick="clearInvForm()"><i class="bi bi-eraser"></i> Clear</button>
+            <button class="btn btn-info" onclick="addStock()"><i class="bi bi-plus-circle"></i> Add Stock</button>
+        </div>
+    </div>
+</div>
+
+<div class="card-custom">
+    <h5 class="card-title">Parts List</h5>
+    <div class="table-responsive-custom">
+        <table class="table table-custom" id="invTable">
+            <thead>
+                <tr>
+                    <th>Part #</th>
+                    <th>Description</th>
+                    <th>Engine</th>
+                    <th>Barcode</th>
+                    <th>Stock</th>
+                    <th>Reorder</th>
+                    <th>Rate</th>
+                    <th>Remark</th>
+                </tr>
+            </thead>
+            <tbody id="invBody">
+                <tr><td colspan="8" class="text-muted">Loading inventory...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let partData = [];
+
+function loadInventory() {
+    const search = document.getElementById('invSearch').value;
+    fetch(`/api/inventory?search=${encodeURIComponent(search)}`)
+        .then(r => r.json())
+        .then(data => {
+            partData = data;
+            const tbody = document.getElementById('invBody');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="8" class="text-muted">No parts found</td></tr>';
+                return;
+            }
+            data.forEach(part => {
+                const tr = document.createElement('tr');
+                if (part.is_low_stock) {
+                    tr.className = 'low-stock';
+                }
+                tr.innerHTML = `
+                    <td><strong>${part.part_number}</strong></td>
+                    <td>${part.description}</td>
+                    <td>${part.engine_type}</td>
+                    <td>${part.barcode || ''}</td>
+                    <td>${part.stock}</td>
+                    <td>${part.reorder_point}</td>
+                    <td>$${part.rate.toFixed(2)}</td>
+                    <td>${part.remark || ''}</td>
+                `;
+                tr.style.cursor = 'pointer';
+                tr.onclick = () => loadPart(part.id);
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading inventory:', err);
+            document.getElementById('invBody').innerHTML = '<tr><td colspan="8" class="text-danger">Error loading inventory</td></tr>';
+        });
+}
+
+function loadPart(id) {
+    fetch(`/api/inventory/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            document.getElementById('invId').value = data.id;
+            document.getElementById('invPart').value = data.part_number;
+            document.getElementById('invDesc').value = data.description;
+            document.getElementById('invEngine').value = data.engine_type;
+            document.getElementById('invBarcode').value = data.barcode || '';
+            document.getElementById('invStock').value = data.stock;
+            document.getElementById('invReorder').value = data.reorder_point;
+            document.getElementById('invRate').value = data.rate;
+            document.getElementById('invRemark').value = data.remark || '';
+        });
+}
+
+function savePart() {
+    const data = getInvData();
+    if (!data.part_number || !data.description) {
+        alert('Part number and description are required');
+        return;
+    }
+    data.id = null;
+
+    fetch('/api/inventory', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            clearInvForm();
+            loadInventory();
+        } else {
+            alert(data.error || 'Error saving');
+        }
+    });
+}
+
+function updatePart() {
+    const id = document.getElementById('invId').value;
+    if (!id) {
+        alert('Select a part to update');
+        return;
+    }
+    const data = getInvData();
+    data.id = parseInt(id);
+
+    fetch('/api/inventory', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            clearInvForm();
+            loadInventory();
+        } else {
+            alert(data.error || 'Error updating');
+        }
+    });
+}
+
+function deletePart() {
+    const id = document.getElementById('invId').value;
+    if (!id) {
+        alert('Select a part to delete');
+        return;
+    }
+    if (!confirm('Delete this part?')) return;
+
+    fetch(`/api/inventory/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Deleted successfully');
+                clearInvForm();
+                loadInventory();
+            }
+        });
+}
+
+function addStock() {
+    const id = document.getElementById('invId').value;
+    if (!id) {
+        alert('Select a part first');
+        return;
+    }
+    const qty = prompt('Enter quantity to add:');
+    if (qty && parseInt(qty) > 0) {
+        fetch('/api/inventory/add_stock', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({id: parseInt(id), quantity: parseInt(qty)})
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert(data.message);
+                loadInventory();
+                loadPart(id);
+            }
+        });
+    }
+}
+
+function getInvData() {
+    return {
+        part_number: document.getElementById('invPart').value.trim(),
+        description: document.getElementById('invDesc').value.trim(),
+        engine_type: document.getElementById('invEngine').value,
+        barcode: document.getElementById('invBarcode').value.trim(),
+        stock: parseInt(document.getElementById('invStock').value) || 0,
+        reorder_point: parseInt(document.getElementById('invReorder').value) || 5,
+        rate: parseFloat(document.getElementById('invRate').value) || 0,
+        remark: document.getElementById('invRemark').value.trim()
+    };
+}
+
+function clearInvForm() {
+    document.getElementById('invId').value = '';
+    document.getElementById('invPart').value = '';
+    document.getElementById('invDesc').value = '';
+    document.getElementById('invEngine').value = 'Freightliner';
+    document.getElementById('invBarcode').value = '';
+    document.getElementById('invStock').value = '0';
+    document.getElementById('invReorder').value = '5';
+    document.getElementById('invRate').value = '0';
+    document.getElementById('invRemark').value = '';
+    document.getElementById('scanInput').value = '';
+}
+
+function searchInventory() {
+    loadInventory();
+}
+
+function clearSearch() {
+    document.getElementById('invSearch').value = '';
+    loadInventory();
+}
+
+function showLowStock() {
+    fetch('/api/low_stock')
+        .then(r => r.json())
+        .then(data => {
+            if (data.length === 0) {
+                alert('All stock levels are healthy!');
+                return;
+            }
+            let msg = '⚠ LOW STOCK ITEMS:\n\n';
+            data.forEach(item => {
+                msg += `Part: ${item.part_number}\n`;
+                msg += `Stock: ${item.stock} (Reorder at: ${item.reorder_point})\n\n`;
+            });
+            alert(msg);
+        });
+}
+
+function printInventory() {
+    window.open('/api/inventory/export', '_blank');
+}
+
+document.getElementById('scanInput').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        const code = this.value.trim();
+        if (code) {
+            const found = partData.find(p => p.barcode === code || p.part_number === code);
+            if (found) {
+                loadPart(found.id);
+            } else {
+                document.getElementById('invBarcode').value = code;
+                alert('New part with barcode: ' + code);
+            }
+            this.value = '';
+        }
+    }
+});
+
+loadInventory();
+</script>
+{% endblock %}

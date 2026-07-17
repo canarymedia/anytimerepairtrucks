@@ -1,0 +1,1709 @@
+<!-- templates/dashboard.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AnyTime Repair - Dashboard</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            font-family: Arial, sans-serif;
+            background: #1e222b;
+            color: #fff;
+            min-height: 100vh;
+        }
+        .header {
+            background: #2d3436;
+            padding: 12px 20px;
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 10px;
+            border-bottom: 1px solid #414a57;
+        }
+        .header-title {
+            color: #d63031;
+            font-size: 20px;
+            font-weight: bold;
+        }
+        .header-user {
+            color: #b2bec3;
+            font-size: 13px;
+        }
+        .header-right {
+            margin-left: auto;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            flex-wrap: wrap;
+        }
+        .badge {
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 12px;
+            font-weight: bold;
+        }
+        .badge-online { background: #2ed573; color: #fff; }
+        .badge-offline { background: #b33939; color: #fff; }
+        .btn {
+            padding: 6px 14px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 13px;
+            color: #fff;
+        }
+        .btn-danger { background: #b33939; }
+        .btn-danger:hover { background: #8e2e2e; }
+        .btn-primary { background: #d63031; }
+        .btn-primary:hover { background: #b33939; }
+        .btn-secondary { background: #414a57; }
+        .btn-secondary:hover { background: #2d3436; }
+        .btn-orange { background: #ff9f43; }
+        .btn-orange:hover { background: #e0873a; }
+        .btn-success { background: #2ed573; }
+        .btn-success:hover { background: #26b85c; }
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 16px;
+        }
+        .row {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 16px;
+        }
+        .col-full { grid-column: 1 / -1; }
+        .card {
+            background: #2d3436;
+            border-radius: 8px;
+            padding: 16px;
+            margin-bottom: 16px;
+            border: 1px solid #414a57;
+        }
+        .card-title {
+            font-size: 14px;
+            font-weight: bold;
+            color: #b2bec3;
+            margin-bottom: 8px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 12px;
+        }
+        .stat-box {
+            background: #1e222b;
+            padding: 14px;
+            border-radius: 6px;
+            text-align: center;
+        }
+        .stat-number {
+            font-size: 28px;
+            font-weight: bold;
+            color: #d63031;
+        }
+        .stat-label {
+            font-size: 12px;
+            color: #b2bec3;
+        }
+        .stat-low {
+            color: #ff4444;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 13px;
+        }
+        th {
+            background: #1e222b;
+            padding: 8px 10px;
+            text-align: left;
+            color: #b2bec3;
+            font-weight: bold;
+        }
+        td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #414a57;
+        }
+        .status-badge {
+            padding: 2px 10px;
+            border-radius: 10px;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        .status-open { background: #2ed573; color: #fff; }
+        .status-in_progress { background: #ff9f43; color: #fff; }
+        .status-completed { background: #0984e3; color: #fff; }
+        .status-cancelled { background: #b33939; color: #fff; }
+        .tabs {
+            display: flex;
+            gap: 4px;
+            flex-wrap: wrap;
+            margin-bottom: 16px;
+        }
+        .tab-btn {
+            padding: 8px 16px;
+            background: #2d3436;
+            border: none;
+            border-radius: 4px;
+            color: #b2bec3;
+            cursor: pointer;
+            font-size: 13px;
+        }
+        .tab-btn:hover { background: #414a57; }
+        .tab-btn.active {
+            background: #d63031;
+            color: #fff;
+        }
+        .tab-content {
+            display: none;
+        }
+        .tab-content.active {
+            display: block;
+        }
+        .chart-container {
+            position: relative;
+            height: 200px;
+        }
+        .low-stock-alert {
+            background: #b33939;
+            padding: 10px 16px;
+            border-radius: 4px;
+            margin-bottom: 12px;
+            font-weight: bold;
+            display: none;
+        }
+        .low-stock-alert.show {
+            display: block;
+        }
+        .low-stock-item {
+            padding: 4px 0;
+            font-size: 13px;
+        }
+        .modal-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 1000;
+            justify-content: center;
+            align-items: center;
+            overflow-y: auto;
+            padding: 20px;
+        }
+        .modal-overlay.show {
+            display: flex;
+        }
+        .modal-content {
+            background: #2d3436;
+            border-radius: 8px;
+            padding: 24px;
+            max-width: 800px;
+            width: 100%;
+            max-height: 90vh;
+            overflow-y: auto;
+        }
+        .modal-content input, .modal-content select {
+            background: #1e222b;
+            border: 1px solid #414a57;
+            border-radius: 4px;
+            color: #fff;
+            padding: 6px 10px;
+        }
+        .modal-content input:focus, .modal-content select:focus {
+            outline: none;
+            border-color: #d63031;
+        }
+        @media (max-width: 768px) {
+            .row { grid-template-columns: 1fr; }
+            .header { flex-direction: column; align-items: stretch; }
+            .header-right { margin-left: 0; justify-content: center; }
+            .stats-grid { grid-template-columns: repeat(2, 1fr); }
+            .tabs { justify-content: center; }
+        }
+        @media (max-width: 480px) {
+            .stats-grid { grid-template-columns: 1fr 1fr; }
+            .stat-number { font-size: 20px; }
+            table { font-size: 11px; }
+            th, td { padding: 4px 6px; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <span class="header-title">ANY TIME REPAIR</span>
+        <span class="header-user">👤 {{ username }} ({{ role }})</span>
+        <div class="header-right">
+            <span class="badge badge-online">🌐 Online</span>
+            <button class="btn btn-secondary" onclick="window.location.href='{{ url_for('toggle_lang') }}'">
+                {% if lang == 'en' %}🇪🇸 Español{% else %}🇬🇧 English{% endif %}
+            </button>
+            <button class="btn btn-danger" onclick="window.location.href='{{ url_for('logout') }}'">{{ LANGUAGES[lang]['logout'] }}</button>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Low Stock Alert -->
+        <div class="low-stock-alert {% if low_stock_items %}show{% endif %}" id="lowStockAlert">
+            ⚠ <span id="lowStockText">{{ LANGUAGES[lang]['low_stock_alert'].format(count=low_stock_items|length) }}</span>
+            <div style="margin-top:6px; font-size:13px;" id="lowStockItems">
+                {% for item in low_stock_items %}
+                <div class="low-stock-item">🔴 {{ item.part }} - {{ item.description }}: {{ item.stock }} (Reorder: {{ item.reorder }})</div>
+                {% endfor %}
+            </div>
+        </div>
+
+        <!-- Stats - Only show full stats for admin -->
+        {% if show_dashboard %}
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-number">{{ total_orders }}</div>
+                <div class="stat-label">{{ LANGUAGES[lang]['workorders'] }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{{ total_invoices }}</div>
+                <div class="stat-label">{{ LANGUAGES[lang]['invoices'] }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number">{{ total_parts }}</div>
+                <div class="stat-label">{{ LANGUAGES[lang]['inventory'] }}</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-number {% if low_stock > 0 %}stat-low{% endif %}">{{ low_stock }}</div>
+                <div class="stat-label">Low Stock</div>
+            </div>
+            {% if role == 'admin' %}
+            <div class="stat-box">
+                <div class="stat-number">${{ "%.2f"|format(total_revenue) }}</div>
+                <div class="stat-label">Revenue</div>
+            </div>
+            {% endif %}
+        </div>
+        {% endif %}
+
+        <!-- Tabs - Show based on permissions -->
+        <div class="tabs">
+            {% if 'workorders' in permissions %}
+            <button class="tab-btn active" data-tab="workorders" onclick="switchTab('workorders')">{{ LANGUAGES[lang]['workorders'] }}</button>
+            {% endif %}
+            {% if 'inventory' in permissions %}
+            <button class="tab-btn" data-tab="inventory" onclick="switchTab('inventory')">{{ LANGUAGES[lang]['inventory'] }}</button>
+            {% endif %}
+            {% if 'invoices' in permissions %}
+            <button class="tab-btn" data-tab="invoices" onclick="switchTab('invoices')">{{ LANGUAGES[lang]['invoices'] }}</button>
+            {% endif %}
+            {% if 'users' in permissions %}
+            <button class="tab-btn" data-tab="users" onclick="switchTab('users')">{{ LANGUAGES[lang]['users'] }}</button>
+            {% endif %}
+            <!-- Print Dashboard - Only for admin -->
+            {% if role == 'admin' and can_print %}
+            <button class="btn btn-orange" onclick="printDashboard()" style="margin-left:auto;">🖨 {{ LANGUAGES[lang]['print_dashboard'] }}</button>
+            {% endif %}
+        </div>
+
+        <!-- Work Orders Tab -->
+        <div id="tab-workorders" class="tab-content active">
+            <div class="card">
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    <input type="text" id="wo-search" placeholder="{{ LANGUAGES[lang]['search'] }}" style="flex:1; min-width:150px; padding:6px 12px; background:#1e222b; border:1px solid #414a57; border-radius:4px; color:#fff;">
+                    <button class="btn btn-primary" onclick="searchWorkOrders()">{{ LANGUAGES[lang]['search'] }}</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('wo-search').value=''; searchWorkOrders();">{{ LANGUAGES[lang]['clear'] }}</button>
+                    <button class="btn btn-secondary" onclick="searchWorkOrders()">⟳</button>
+                    <button class="btn btn-success" onclick="showAddWorkOrder()" style="margin-left:auto;">+ {{ LANGUAGES[lang]['add_item'] }}</button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ LANGUAGES[lang]['order_no'] }}</th>
+                                <th>{{ LANGUAGES[lang]['date'] }}</th>
+                                <th>{{ LANGUAGES[lang]['customer'] }}</th>
+                                <th>{{ LANGUAGES[lang]['truck_no'] }}</th>
+                                <th>{{ LANGUAGES[lang]['vin'] }}</th>
+                                <th>{{ LANGUAGES[lang]['status'] }}</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="wo-body">
+                            <tr><td colspan="7" style="text-align:center;color:#b2bec3;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Inventory Tab -->
+        <div id="tab-inventory" class="tab-content">
+            <div class="card">
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    <input type="text" id="inv-search" placeholder="{{ LANGUAGES[lang]['search'] }}" style="flex:1; min-width:150px; padding:6px 12px; background:#1e222b; border:1px solid #414a57; border-radius:4px; color:#fff;">
+                    <button class="btn btn-primary" onclick="searchInventory()">{{ LANGUAGES[lang]['search'] }}</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('inv-search').value=''; searchInventory();">{{ LANGUAGES[lang]['clear'] }}</button>
+                    <button class="btn btn-secondary" onclick="searchInventory()">⟳</button>
+                    <button class="btn btn-success" onclick="showAddPart()" style="margin-left:auto;">+ {{ LANGUAGES[lang]['add_item'] }}</button>
+                    {% if can_print %}
+                    <button class="btn btn-orange" onclick="printInventory()">{{ LANGUAGES[lang]['print_inventory'] }}</button>
+                    {% endif %}
+                </div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ LANGUAGES[lang]['part_number'] }}</th>
+                                <th>{{ LANGUAGES[lang]['description'] }}</th>
+                                <th>{{ LANGUAGES[lang]['engine_type'] }}</th>
+                                <th>{{ LANGUAGES[lang]['stock'] }}</th>
+                                <th>{{ LANGUAGES[lang]['reorder_point'] }}</th>
+                                <th>{{ LANGUAGES[lang]['rate'] }}</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inv-body">
+                            <tr><td colspan="7" style="text-align:center;color:#b2bec3;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoices Tab -->
+        <div id="tab-invoices" class="tab-content">
+            <div class="card">
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    <input type="text" id="inv-search2" placeholder="{{ LANGUAGES[lang]['search'] }}" style="flex:1; min-width:150px; padding:6px 12px; background:#1e222b; border:1px solid #414a57; border-radius:4px; color:#fff;">
+                    <button class="btn btn-primary" onclick="searchInvoices()">{{ LANGUAGES[lang]['search'] }}</button>
+                    <button class="btn btn-secondary" onclick="document.getElementById('inv-search2').value=''; searchInvoices();">{{ LANGUAGES[lang]['clear'] }}</button>
+                    <button class="btn btn-secondary" onclick="searchInvoices()">⟳</button>
+                    <button class="btn btn-success" onclick="showAddInvoice()" style="margin-left:auto;">+ {{ LANGUAGES[lang]['add_item'] }}</button>
+                    <button class="btn btn-secondary" onclick="loadFromWorkOrder()">{{ LANGUAGES[lang]['load_from_wo'] }}</button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ LANGUAGES[lang]['invoice_no'] }}</th>
+                                <th>{{ LANGUAGES[lang]['date'] }}</th>
+                                <th>{{ LANGUAGES[lang]['customer'] }}</th>
+                                <th>{{ LANGUAGES[lang]['truck'] }}</th>
+                                <th>{{ LANGUAGES[lang]['vin'] }}</th>
+                                <th>{{ LANGUAGES[lang]['total'] }}</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="inv-body2">
+                            <tr><td colspan="7" style="text-align:center;color:#b2bec3;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Users Tab -->
+        <div id="tab-users" class="tab-content">
+            <div class="card">
+                {% if role == 'admin' %}
+                <div style="display:flex; flex-wrap:wrap; gap:8px; margin-bottom:12px;">
+                    <input type="text" id="new-username" placeholder="{{ LANGUAGES[lang]['username'] }}" style="flex:1; min-width:120px; padding:6px 12px; background:#1e222b; border:1px solid #414a57; border-radius:4px; color:#fff;">
+                    <input type="password" id="new-password" placeholder="{{ LANGUAGES[lang]['password'] }}" style="flex:1; min-width:120px; padding:6px 12px; background:#1e222b; border:1px solid #414a57; border-radius:4px; color:#fff;">
+                    <select id="new-role" style="padding:6px 12px; background:#1e222b; border:1px solid #414a57; border-radius:4px; color:#fff;">
+                        <option value="admin">{{ LANGUAGES[lang]['admin'] }}</option>
+                        <option value="manager">{{ LANGUAGES[lang]['manager'] }}</option>
+                        <option value="mechanic" selected>{{ LANGUAGES[lang]['mechanic_role'] }}</option>
+                        <option value="cashier">{{ LANGUAGES[lang]['cashier'] }}</option>
+                    </select>
+                    <button class="btn btn-primary" onclick="createUser()">{{ LANGUAGES[lang]['create_user'] }}</button>
+                    <button class="btn btn-secondary" onclick="refreshUsers()">⟳</button>
+                </div>
+                {% endif %}
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead>
+                            <tr>
+                                <th>{{ LANGUAGES[lang]['username'] }}</th>
+                                <th>{{ LANGUAGES[lang]['role'] }}</th>
+                                <th>Active</th>
+                                <th>Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="user-body">
+                            <tr><td colspan="4" style="text-align:center;color:#b2bec3;">Loading...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Dashboard Charts and Recent Data - Only for admin -->
+        {% if show_dashboard %}
+        <div class="row">
+            <div class="card">
+                <div class="card-title">{{ LANGUAGES[lang]['inventory_levels'] }}</div>
+                <div class="chart-container">
+                    <canvas id="stockChart"></canvas>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">{{ LANGUAGES[lang]['stock_distribution'] }}</div>
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="card">
+                <div class="card-title">{{ LANGUAGES[lang]['workorders'] }} (Recent)</div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead><tr><th>{{ LANGUAGES[lang]['order_no'] }}</th><th>{{ LANGUAGES[lang]['customer'] }}</th><th>{{ LANGUAGES[lang]['total'] }}</th><th>{{ LANGUAGES[lang]['status'] }}</th></tr></thead>
+                        <tbody>
+                            {% for order in recent_orders %}
+                            <tr>
+                                <td>{{ order[0] }}</td>
+                                <td>{{ order[1] }}</td>
+                                <td>${{ "%.2f"|format(order[2]) }}</td>
+                                <td><span class="status-badge status-{{ order[3].replace(' ', '_') }}">{{ order[3] }}</span></td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="4" style="text-align:center;color:#b2bec3;">{{ LANGUAGES[lang]['no_data'] }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="card">
+                <div class="card-title">{{ LANGUAGES[lang]['invoices'] }} (Recent)</div>
+                <div style="overflow-x:auto;">
+                    <table>
+                        <thead><tr><th>{{ LANGUAGES[lang]['invoice_no'] }}</th><th>{{ LANGUAGES[lang]['customer'] }}</th><th>{{ LANGUAGES[lang]['total'] }}</th></tr></thead>
+                        <tbody>
+                            {% for inv in recent_invoices %}
+                            <tr>
+                                <td>{{ inv[0] }}</td>
+                                <td>{{ inv[1] }}</td>
+                                <td>${{ "%.2f"|format(inv[2]) }}</td>
+                            </tr>
+                            {% else %}
+                            <tr><td colspan="3" style="text-align:center;color:#b2bec3;">{{ LANGUAGES[lang]['no_data'] }}</td></tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div style="text-align:center; color:#b2bec3; font-size:11px; padding:16px 0; border-top:1px solid #414a57; margin-top:16px;">
+            © {{ DEVELOPER }}
+        </div>
+    </div>
+
+    <!-- Modal -->
+    <div class="modal-overlay" id="modal">
+        <div class="modal-content" id="modal-content">
+            <div id="modal-body"></div>
+            <div style="margin-top:16px; text-align:right;">
+                <button class="btn btn-secondary" onclick="closeModal()">{{ LANGUAGES[lang]['cancel'] }}</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Language and translation helper
+        const lang = '{{ lang }}';
+        const L = {{ LANGUAGES|tojson|safe }};
+        const ROLE = '{{ role }}';
+        const CAN_PRINT = {{ can_print|tojson|safe }};
+
+        function t(key) {
+            return L[lang] && L[lang][key] ? L[lang][key] : key;
+        }
+
+        // Tab switching
+        function switchTab(tab) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.remove('active'));
+            document.querySelector(`.tab-btn[data-tab="${tab}"]`).classList.add('active');
+            document.getElementById('tab-' + tab).classList.add('active');
+            if (tab === 'workorders') searchWorkOrders();
+            if (tab === 'inventory') searchInventory();
+            if (tab === 'invoices') searchInvoices();
+            if (tab === 'users') refreshUsers();
+        }
+
+        // Modal functions
+        function showModal(html) {
+            document.getElementById('modal-body').innerHTML = html;
+            document.getElementById('modal').classList.add('show');
+        }
+
+        function closeModal() {
+            document.getElementById('modal').classList.remove('show');
+        }
+
+        // Close modal on background click
+        document.getElementById('modal').addEventListener('click', function(e) {
+            if (e.target === this) closeModal();
+        });
+
+        // ============ WORK ORDERS ============
+        function searchWorkOrders() {
+            const search = document.getElementById('wo-search').value;
+            fetch(`/api/workorders?search=${encodeURIComponent(search)}`)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('wo-body');
+                    if (data.error) {
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">${data.error}</td></tr>`;
+                        return;
+                    }
+                    if (!data || data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">${t('no_data')}</td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = data.map(wo => `
+                        <tr>
+                            <td>${wo.order_no}</td>
+                            <td>${wo.order_date}</td>
+                            <td>${wo.customer_name}</td>
+                            <td>${wo.truck_no || ''}</td>
+                            <td>${wo.vin}</td>
+                            <td><span class="status-badge status-${wo.status.replace(' ', '_')}">${wo.status}</span></td>
+                            <td>
+                                <button class="btn btn-secondary" style="padding:2px 8px;font-size:11px;" onclick="editWorkOrder(${wo.work_order_id})">✎</button>
+                                <button class="btn btn-danger" style="padding:2px 8px;font-size:11px;" onclick="deleteWorkOrder(${wo.work_order_id}, '${wo.order_no}')">×</button>
+                                ${CAN_PRINT ? `<button class="btn btn-primary" style="padding:2px 8px;font-size:11px;" onclick="printWorkOrder(${wo.work_order_id})">🖨</button>` : '' }
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(() => {
+                    document.getElementById('wo-body').innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">Error loading data</td></tr>`;
+                });
+        }
+
+        function showAddWorkOrder() {
+            fetch('/api/parts')
+                .then(r => r.json())
+                .then(parts => {
+                    const partOptions = parts.map(p => `<option value="${p.part_number}">${p.part_number} - ${p.description}</option>`).join('');
+                    showModal(`
+                        <h3 style="color:#d63031;margin-bottom:16px;">${t('workorders')} - ${t('add_item')}</h3>
+                        <form id="wo-form" onsubmit="saveWorkOrder(event)">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('order_no')}</label>
+                                    <input type="text" id="wo-order-no" value="${generateOrderNo()}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;" readonly></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('date')}</label>
+                                    <input type="date" id="wo-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('customer')} *</label>
+                                    <input type="text" id="wo-customer" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('company')}</label>
+                                    <input type="text" id="wo-company" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('phone')}</label>
+                                    <input type="text" id="wo-phone" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('driver')}</label>
+                                    <input type="text" id="wo-driver" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('truck_no')}</label>
+                                    <input type="text" id="wo-truck" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('vin')} *</label>
+                                    <input type="text" id="wo-vin" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;text-transform:uppercase;" maxlength="6"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('status')}</label>
+                                    <select id="wo-status" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                                        <option value="open">open</option>
+                                        <option value="in_progress">in_progress</option>
+                                        <option value="completed">completed</option>
+                                        <option value="cancelled">cancelled</option>
+                                    </select></div>
+                            </div>
+                            <hr style="border-color:#414a57;margin:12px 0;">
+                            <h4 style="color:#b2bec3;">${t('items')}</h4>
+                            <div style="display:grid; grid-template-columns:2fr 1fr 0.7fr 0.7fr 1fr; gap:6px; margin-bottom:8px;">
+                                <div><label style="color:#b2bec3;font-size:11px;">${t('description')}</label>
+                                    <input type="text" id="item-desc" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:11px;">${t('part_no')}</label>
+                                    <select id="item-part" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                                        <option value="">Select...</option>
+                                        ${partOptions}
+                                    </select></div>
+                                <div><label style="color:#b2bec3;font-size:11px;">${t('qty')}</label>
+                                    <input type="number" id="item-qty" value="1" min="0.5" step="0.5" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:11px;">${t('hours')}</label>
+                                    <input type="number" id="item-hours" value="0" min="0" step="0.5" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:11px;">${t('mechanic')}</label>
+                                    <input type="text" id="item-mechanic" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                            </div>
+                            <button type="button" class="btn btn-primary" onclick="addItemToWO()" style="padding:4px 12px;font-size:12px;">+ ${t('add_item')}</button>
+                            <div style="margin-top:8px; overflow-x:auto;">
+                                <table style="font-size:12px;">
+                                    <thead><tr><th>${t('description')}</th><th>${t('part_no')}</th><th>${t('qty')}</th><th>${t('hours')}</th><th>${t('mechanic')}</th><th></th></tr></thead>
+                                    <tbody id="wo-items-body"></tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top:12px; text-align:right;">
+                                <button type="submit" class="btn btn-primary">${t('save_order')}</button>
+                            </div>
+                        </form>
+                    `);
+                    document.getElementById('item-part').addEventListener('change', function() {
+                        const selected = parts.find(p => p.part_number === this.value);
+                        if (selected) {
+                            document.getElementById('item-desc').value = selected.description;
+                        }
+                    });
+                });
+        }
+
+        let woItems = [];
+
+        function addItemToWO() {
+            const desc = document.getElementById('item-desc').value.trim();
+            const part = document.getElementById('item-part').value;
+            const qty = parseFloat(document.getElementById('item-qty').value) || 1;
+            const hours = parseFloat(document.getElementById('item-hours').value) || 0;
+            const mechanic = document.getElementById('item-mechanic').value.trim();
+
+            if (!desc) {
+                alert(t('item_description_required'));
+                return;
+            }
+
+            woItems.push({ description: desc, part_number: part, qty, hours, mechanic });
+            renderWOItems();
+            document.getElementById('item-desc').value = '';
+            document.getElementById('item-part').value = '';
+            document.getElementById('item-qty').value = '1';
+            document.getElementById('item-hours').value = '0';
+            document.getElementById('item-mechanic').value = '';
+        }
+
+        function removeWOItem(index) {
+            woItems.splice(index, 1);
+            renderWOItems();
+        }
+
+        function renderWOItems() {
+            const tbody = document.getElementById('wo-items-body');
+            tbody.innerHTML = woItems.map((item, i) => `
+                <tr>
+                    <td>${item.description}</td>
+                    <td>${item.part_number || ''}</td>
+                    <td>${item.qty}</td>
+                    <td>${item.hours}</td>
+                    <td>${item.mechanic || ''}</td>
+                    <td><button class="btn btn-danger" style="padding:0 6px;font-size:10px;" onclick="removeWOItem(${i})">×</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function generateOrderNo() {
+            return 'WO-' + String(Math.floor(Math.random() * 90000) + 10000);
+        }
+
+        function saveWorkOrder(e) {
+            e.preventDefault();
+            const customer = document.getElementById('wo-customer').value.trim();
+            const vin = document.getElementById('wo-vin').value.trim().toUpperCase();
+            const status = document.getElementById('wo-status').value;
+
+            if (!customer) { alert(t('customer_required')); return; }
+            if (!vin || !/^[A-Z0-9]{4,6}$/.test(vin)) { alert(t('vin_required')); return; }
+            if (woItems.length === 0) { alert(t('items_required')); return; }
+
+            const data = {
+                order_no: document.getElementById('wo-order-no').value,
+                order_date: document.getElementById('wo-date').value,
+                customer_name: customer,
+                company_name: document.getElementById('wo-company').value,
+                company_phone: document.getElementById('wo-phone').value,
+                driver_name: document.getElementById('wo-driver').value,
+                truck_no: document.getElementById('wo-truck').value,
+                vin: vin,
+                status: status,
+                paid: 0,
+                items: woItems
+            };
+
+            fetch('/api/workorders', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(`${t('save_success')} Order: ${result.order_no}`);
+                closeModal();
+                searchWorkOrders();
+                woItems = [];
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function editWorkOrder(id) {
+            fetch(`/api/workorders/${id}`)
+                .then(r => r.json())
+                .then(wo => {
+                    if (wo.error) { alert(wo.error); return; }
+                    showModal(`
+                        <h3 style="color:#d63031;margin-bottom:16px;">${t('workorders')} - ${t('update_order')}</h3>
+                        <form id="wo-form" onsubmit="updateWorkOrder(event, ${id})">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('order_no')}</label>
+                                    <input type="text" value="${wo.order_no}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;" readonly></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('date')}</label>
+                                    <input type="date" id="wo-date" value="${wo.order_date}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('customer')} *</label>
+                                    <input type="text" id="wo-customer" value="${wo.customer_name}" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('company')}</label>
+                                    <input type="text" id="wo-company" value="${wo.company_name || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('phone')}</label>
+                                    <input type="text" id="wo-phone" value="${wo.company_phone || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('driver')}</label>
+                                    <input type="text" id="wo-driver" value="${wo.driver_name || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('truck_no')}</label>
+                                    <input type="text" id="wo-truck" value="${wo.truck_no || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('vin')} *</label>
+                                    <input type="text" id="wo-vin" value="${wo.vin}" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;text-transform:uppercase;" maxlength="6"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('status')}</label>
+                                    <select id="wo-status" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                                        <option value="open" ${wo.status === 'open' ? 'selected' : ''}>open</option>
+                                        <option value="in_progress" ${wo.status === 'in_progress' ? 'selected' : ''}>in_progress</option>
+                                        <option value="completed" ${wo.status === 'completed' ? 'selected' : ''}>completed</option>
+                                        <option value="cancelled" ${wo.status === 'cancelled' ? 'selected' : ''}>cancelled</option>
+                                    </select></div>
+                            </div>
+                            <hr style="border-color:#414a57;margin:12px 0;">
+                            <h4 style="color:#b2bec3;">${t('items')}</h4>
+                            <div style="overflow-x:auto; margin-bottom:8px;">
+                                <table style="font-size:12px;">
+                                    <thead><tr><th>${t('description')}</th><th>${t('part_no')}</th><th>${t('qty')}</th><th>${t('hours')}</th><th>${t('mechanic')}</th></tr></thead>
+                                    <tbody id="wo-items-body">
+                                        ${wo.items.map(item => `
+                                            <tr>
+                                                <td><input type="text" class="item-desc" value="${item.description}" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="text" class="item-part" value="${item.part_number || ''}" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="number" class="item-qty" value="${item.qty}" step="0.5" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="number" class="item-hours" value="${item.hours || 0}" step="0.5" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="text" class="item-mechanic" value="${item.mechanic || ''}" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top:12px; text-align:right;">
+                                <button type="submit" class="btn btn-primary">${t('update_order')}</button>
+                            </div>
+                        </form>
+                    `);
+                });
+        }
+
+        function updateWorkOrder(e, id) {
+            e.preventDefault();
+            const customer = document.getElementById('wo-customer').value.trim();
+            const vin = document.getElementById('wo-vin').value.trim().toUpperCase();
+            const status = document.getElementById('wo-status').value;
+
+            if (!customer) { alert(t('customer_required')); return; }
+            if (!vin || !/^[A-Z0-9]{4,6}$/.test(vin)) { alert(t('vin_required')); return; }
+
+            const descs = document.querySelectorAll('.item-desc');
+            const parts = document.querySelectorAll('.item-part');
+            const qtys = document.querySelectorAll('.item-qty');
+            const hourss = document.querySelectorAll('.item-hours');
+            const mechs = document.querySelectorAll('.item-mechanic');
+
+            const items = [];
+            for (let i = 0; i < descs.length; i++) {
+                const desc = descs[i].value.trim();
+                if (desc) {
+                    items.push({
+                        description: desc,
+                        part_number: parts[i].value.trim() || '',
+                        qty: parseFloat(qtys[i].value) || 1,
+                        hours: parseFloat(hourss[i].value) || 0,
+                        mechanic: mechs[i].value.trim() || ''
+                    });
+                }
+            }
+
+            if (items.length === 0) { alert(t('items_required')); return; }
+
+            const data = {
+                order_date: document.getElementById('wo-date').value,
+                customer_name: customer,
+                company_name: document.getElementById('wo-company').value,
+                company_phone: document.getElementById('wo-phone').value,
+                driver_name: document.getElementById('wo-driver').value,
+                truck_no: document.getElementById('wo-truck').value,
+                vin: vin,
+                status: status,
+                paid: 0,
+                items: items
+            };
+
+            fetch(`/api/workorders/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(t('update_success'));
+                closeModal();
+                searchWorkOrders();
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function deleteWorkOrder(id, orderNo) {
+            if (!confirm(`${t('confirm_delete')} ${orderNo}?`)) return;
+            fetch(`/api/workorders/${id}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(result => {
+                    if (result.error) { alert(result.error); return; }
+                    alert(t('delete_success'));
+                    searchWorkOrders();
+                })
+                .catch(() => alert(t('error')));
+        }
+
+        function printWorkOrder(id) {
+            window.open(`/api/print/workorder/${id}`, '_blank');
+        }
+
+        // ============ INVENTORY ============
+        function searchInventory() {
+            const search = document.getElementById('inv-search').value;
+            fetch(`/api/inventory?search=${encodeURIComponent(search)}`)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('inv-body');
+                    if (data.error) {
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">${data.error}</td></tr>`;
+                        return;
+                    }
+                    if (!data || data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">${t('no_data')}</td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = data.map(item => `
+                        <tr ${item.stock <= item.reorder_point ? 'style="background:#b3393933;"' : ''}>
+                            <td><strong>${item.part_number}</strong></td>
+                            <td>${item.description}</td>
+                            <td>${item.engine_type}</td>
+                            <td ${item.stock <= item.reorder_point ? 'style="color:#ff4444;font-weight:bold;"' : ''}>${item.stock}</td>
+                            <td>${item.reorder_point}</td>
+                            <td>$${item.rate}</td>
+                            <td>
+                                <button class="btn btn-secondary" style="padding:2px 8px;font-size:11px;" onclick="editPart('${item.part_number}')">✎</button>
+                                <button class="btn btn-secondary" style="padding:2px 8px;font-size:11px;" onclick="addStock('${item.part_number}')">+</button>
+                                <button class="btn btn-danger" style="padding:2px 8px;font-size:11px;" onclick="deletePart('${item.part_number}')">×</button>
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(() => {
+                    document.getElementById('inv-body').innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">Error loading data</td></tr>`;
+                });
+        }
+
+        function showAddPart() {
+            showModal(`
+                <h3 style="color:#d63031;margin-bottom:16px;">${t('inventory')} - ${t('add_item')}</h3>
+                <form id="part-form" onsubmit="savePart(event)">
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('part_number')} *</label>
+                            <input type="text" id="part-number" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('description')} *</label>
+                            <input type="text" id="part-desc" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('engine_type')}</label>
+                            <select id="part-engine" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                                <option value="Freightliner">Freightliner</option>
+                                <option value="Volvo">Volvo</option>
+                                <option value="Cummins">Cummins</option>
+                                <option value="Paccar">Paccar</option>
+                                <option value="Other">Other</option>
+                            </select></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('barcode')}</label>
+                            <input type="text" id="part-barcode" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('stock')}</label>
+                            <input type="number" id="part-stock" value="0" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('reorder_point')}</label>
+                            <input type="number" id="part-reorder" value="5" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('rate')}</label>
+                            <input type="number" id="part-rate" value="0" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                        <div><label style="color:#b2bec3;font-size:12px;">${t('remark')}</label>
+                            <input type="text" id="part-remark" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    </div>
+                    <div style="margin-top:12px; text-align:right;">
+                        <button type="submit" class="btn btn-primary">${t('add')}</button>
+                    </div>
+                </form>
+            `);
+        }
+
+        function savePart(e) {
+            e.preventDefault();
+            const partNumber = document.getElementById('part-number').value.trim();
+            const description = document.getElementById('part-desc').value.trim();
+
+            if (!partNumber || !description) {
+                alert('Part number and description are required.');
+                return;
+            }
+
+            const data = {
+                part_number: partNumber,
+                description: description,
+                engine_type: document.getElementById('part-engine').value,
+                barcode: document.getElementById('part-barcode').value.trim(),
+                stock: parseInt(document.getElementById('part-stock').value) || 0,
+                reorder_point: parseInt(document.getElementById('part-reorder').value) || 5,
+                rate: parseFloat(document.getElementById('part-rate').value) || 0,
+                remark: document.getElementById('part-remark').value.trim()
+            };
+
+            fetch('/api/inventory', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(`${t('save_success')} ${result.part_number}`);
+                closeModal();
+                searchInventory();
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function editPart(partNumber) {
+            fetch(`/api/inventory/${partNumber}`)
+                .then(r => r.json())
+                .then(item => {
+                    if (item.error) { alert(item.error); return; }
+                    showModal(`
+                        <h3 style="color:#d63031;margin-bottom:16px;">${t('inventory')} - ${t('update')}</h3>
+                        <form id="part-form" onsubmit="updatePart(event, '${partNumber}')">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('part_number')}</label>
+                                    <input type="text" value="${item.part_number}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;" readonly></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('description')} *</label>
+                                    <input type="text" id="part-desc" value="${item.description}" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('engine_type')}</label>
+                                    <select id="part-engine" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                                        <option value="Freightliner" ${item.engine_type === 'Freightliner' ? 'selected' : ''}>Freightliner</option>
+                                        <option value="Volvo" ${item.engine_type === 'Volvo' ? 'selected' : ''}>Volvo</option>
+                                        <option value="Cummins" ${item.engine_type === 'Cummins' ? 'selected' : ''}>Cummins</option>
+                                        <option value="Paccar" ${item.engine_type === 'Paccar' ? 'selected' : ''}>Paccar</option>
+                                        <option value="Other" ${item.engine_type === 'Other' ? 'selected' : ''}>Other</option>
+                                    </select></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('barcode')}</label>
+                                    <input type="text" id="part-barcode" value="${item.barcode || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('stock')}</label>
+                                    <input type="number" id="part-stock" value="${item.stock}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('reorder_point')}</label>
+                                    <input type="number" id="part-reorder" value="${item.reorder_point}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('rate')}</label>
+                                    <input type="number" id="part-rate" value="${item.rate}" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('remark')}</label>
+                                    <input type="text" id="part-remark" value="${item.remark || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                            </div>
+                            <div style="margin-top:12px; text-align:right;">
+                                <button type="submit" class="btn btn-primary">${t('update')}</button>
+                            </div>
+                        </form>
+                    `);
+                });
+        }
+
+        function updatePart(e, partNumber) {
+            e.preventDefault();
+            const data = {
+                description: document.getElementById('part-desc').value.trim(),
+                engine_type: document.getElementById('part-engine').value,
+                barcode: document.getElementById('part-barcode').value.trim(),
+                stock: parseInt(document.getElementById('part-stock').value) || 0,
+                reorder_point: parseInt(document.getElementById('part-reorder').value) || 5,
+                rate: parseFloat(document.getElementById('part-rate').value) || 0,
+                remark: document.getElementById('part-remark').value.trim()
+            };
+
+            if (!data.description) {
+                alert('Description is required.');
+                return;
+            }
+
+            fetch(`/api/inventory/${partNumber}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(t('update_success'));
+                closeModal();
+                searchInventory();
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function deletePart(partNumber) {
+            if (!confirm(`${t('confirm_delete')} ${partNumber}?`)) return;
+            fetch(`/api/inventory/${partNumber}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(result => {
+                    if (result.error) { alert(result.error); return; }
+                    alert(t('delete_success'));
+                    searchInventory();
+                })
+                .catch(() => alert(t('error')));
+        }
+
+        function addStock(partNumber) {
+            const qty = prompt(`Add quantity to ${partNumber}:`, '1');
+            if (qty === null) return;
+            const num = parseInt(qty);
+            if (isNaN(num) || num <= 0) { alert('Enter a valid positive number.'); return; }
+
+            fetch('/api/inventory/add_stock', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ part_number: partNumber, quantity: num })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(`Added ${num} units. New stock: ${result.new_stock}`);
+                searchInventory();
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function printInventory() {
+            window.open('/api/print/inventory', '_blank');
+        }
+
+        function printDashboard() {
+            window.open('/api/print/dashboard', '_blank');
+        }
+
+        // ============ INVOICES ============
+        function searchInvoices() {
+            const search = document.getElementById('inv-search2').value;
+            fetch(`/api/invoices?search=${encodeURIComponent(search)}`)
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('inv-body2');
+                    if (data.error) {
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">${data.error}</td></tr>`;
+                        return;
+                    }
+                    if (!data || data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">${t('no_data')}</td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = data.map(inv => `
+                        <tr>
+                            <td>${inv.invoice_no}</td>
+                            <td>${inv.invoice_date}</td>
+                            <td>${inv.customer_name}</td>
+                            <td>${inv.truck_no || ''}</td>
+                            <td>${inv.vin}</td>
+                            <td>$${inv.total}</td>
+                            <td>
+                                <button class="btn btn-secondary" style="padding:2px 8px;font-size:11px;" onclick="editInvoice(${inv.id})">✎</button>
+                                ${CAN_PRINT ? `<button class="btn btn-primary" style="padding:2px 8px;font-size:11px;" onclick="printInvoice(${inv.id})">🖨</button>` : '' }
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(() => {
+                    document.getElementById('inv-body2').innerHTML = `<tr><td colspan="7" style="text-align:center;color:#b2bec3;">Error loading data</td></tr>`;
+                });
+        }
+
+        function showAddInvoice() {
+    // First fetch parts and work orders
+    Promise.all([
+        fetch('/api/parts').then(r => r.json()),
+        fetch('/api/workorders').then(r => r.json())
+    ])
+    .then(([parts, workorders]) => {
+        const partOptions = parts.map(p => `<option value="${p.part_number}">${p.part_number} - ${p.description}</option>`).join('');
+        const woOptions = workorders.map(wo =>
+            `<option value="${wo.work_order_id}">${wo.order_no} - ${wo.customer_name}</option>`
+        ).join('');
+
+        showModal(`
+            <h3 style="color:#d63031;margin-bottom:16px;">${t('invoices')} - ${t('add_item')}</h3>
+            <form id="inv-form" onsubmit="saveInvoice(event)">
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('invoice_no')}</label>
+                        <input type="text" id="inv-no" value="${generateInvoiceNo()}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;" readonly></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('date')}</label>
+                        <input type="date" id="inv-date" value="${new Date().toISOString().split('T')[0]}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('customer_name')} *</label>
+                        <input type="text" id="inv-customer" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('truck')}</label>
+                        <input type="text" id="inv-truck" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('vin_number')} *</label>
+                        <input type="text" id="inv-vin" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;text-transform:uppercase;" maxlength="6"></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('work_order_id')}</label>
+                        <select id="inv-wo" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                            <option value="">Select Work Order...</option>
+                            ${woOptions}
+                        </select></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('labor_cost')}</label>
+                        <input type="number" id="inv-labor-cost" value="0" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('tax_rate')}</label>
+                        <input type="number" id="inv-tax" value="7.30" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:12px;">${t('amount_paid')}</label>
+                        <input type="number" id="inv-paid" value="0" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                </div>
+                <hr style="border-color:#414a57;margin:12px 0;">
+                <div style="display:flex; gap:8px; margin-bottom:12px;">
+                    <button type="button" class="btn btn-secondary" onclick="loadFromWOCombo()" style="flex:1;">📥 ${t('load_from_wo')}</button>
+                </div>
+                <h4 style="color:#b2bec3;">${t('invoice_items')}</h4>
+                <div style="display:grid; grid-template-columns:2fr 1fr 0.7fr 0.7fr 0.7fr; gap:6px; margin-bottom:8px;">
+                    <div><label style="color:#b2bec3;font-size:11px;">${t('description')}</label>
+                        <input type="text" id="inv-item-desc" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:11px;">${t('part_no')}</label>
+                        <select id="inv-item-part" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;">
+                            <option value="">Select...</option>
+                            ${partOptions}
+                        </select></div>
+                    <div><label style="color:#b2bec3;font-size:11px;">${t('qty')}</label>
+                        <input type="number" id="inv-item-qty" value="1" min="0.5" step="0.5" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:11px;">${t('hours')}</label>
+                        <input type="number" id="inv-item-hours" value="0" min="0" step="0.5" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                    <div><label style="color:#b2bec3;font-size:11px;">${t('rate')}</label>
+                        <input type="number" id="inv-item-rate" value="0" step="0.01" style="width:100%;padding:4px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                </div>
+                <button type="button" class="btn btn-primary" onclick="addItemToInvoice()" style="padding:4px 12px;font-size:12px;">+ ${t('add_item')}</button>
+                <div style="margin-top:8px; overflow-x:auto;">
+                    <table style="font-size:12px;">
+                        <thead><tr><th>${t('description')}</th><th>${t('part_no')}</th><th>${t('qty')}</th><th>${t('hours')}</th><th>${t('rate')}</th><th>${t('amount')}</th><th></th></tr></thead>
+                        <tbody id="inv-items-body"></tbody>
+                    </table>
+                </div>
+                <div style="margin-top:12px; text-align:right;">
+                    <button type="submit" class="btn btn-primary">${t('save')}</button>
+                </div>
+            </form>
+        `);
+
+        document.getElementById('inv-item-part').addEventListener('change', function() {
+            const selected = parts.find(p => p.part_number === this.value);
+            if (selected) {
+                document.getElementById('inv-item-desc').value = selected.description;
+                document.getElementById('inv-item-rate').value = selected.rate;
+            }
+        });
+
+        // Add event listener for work order selection
+        document.getElementById('inv-wo').addEventListener('change', function() {
+            if (this.value) {
+                loadFromWOCombo();
+            }
+        });
+    });
+}
+
+// New function to load from work order dropdown
+function loadFromWOCombo() {
+    const woSelect = document.getElementById('inv-wo');
+    const woId = woSelect.value;
+
+    if (!woId) {
+        alert('Please select a work order first.');
+        return;
+    }
+
+    // Show loading indicator
+    const loadBtn = document.querySelector('[onclick="loadFromWOCombo()"]');
+    const originalText = loadBtn.textContent;
+    loadBtn.textContent = '⏳ Loading...';
+    loadBtn.disabled = true;
+
+    fetch('/api/invoices/load_wo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ work_order_id: woId })
+    })
+    .then(r => r.json())
+    .then(result => {
+        loadBtn.textContent = originalText;
+        loadBtn.disabled = false;
+
+        if (result.error) {
+            alert(result.error);
+            return;
+        }
+
+        // Populate the invoice form fields
+        document.getElementById('inv-customer').value = result.customer_name || '';
+        document.getElementById('inv-truck').value = result.truck_no || '';
+        document.getElementById('inv-vin').value = result.vin || '';
+
+        // Set labor cost
+        if (result.labor_total > 0) {
+            document.getElementById('inv-labor-cost').value = result.labor_total.toFixed(2);
+        }
+
+        // Clear existing items
+        invItems = [];
+
+        // Add items to the invoice items list
+        if (result.items && result.items.length > 0) {
+            result.items.forEach(item => {
+                invItems.push({
+                    description: item.description,
+                    part_number: item.part_number || '',
+                    qty: item.qty || 1,
+                    hours: item.hours || 0,
+                    rate: item.rate || 0,
+                    amount: item.amount || 0,
+                    is_labor: item.is_labor || 0
+                });
+            });
+            renderInvItems();
+        }
+
+        const subtotal = result.subtotal_total || 0;
+        const labor = result.labor_total || 0;
+        const total = result.work_order_total || 0;
+
+        alert(`✅ Loaded ${result.items ? result.items.length : 0} items from Work Order ${result.work_order_number || woId}\n\n📊 Subtotal: $${subtotal.toFixed(2)}\n🔧 Labor: $${labor.toFixed(2)}\n💰 Total: $${total.toFixed(2)}`);
+    })
+    .catch((error) => {
+        loadBtn.textContent = originalText;
+        loadBtn.disabled = false;
+        console.error('Error loading work order:', error);
+        alert(t('error') + ': Could not load work order');
+    });
+}
+        let invItems = [];
+
+        function addItemToInvoice() {
+            const desc = document.getElementById('inv-item-desc').value.trim();
+            const part = document.getElementById('inv-item-part').value;
+            const qty = parseFloat(document.getElementById('inv-item-qty').value) || 1;
+            const hours = parseFloat(document.getElementById('inv-item-hours').value) || 0;
+            const rate = parseFloat(document.getElementById('inv-item-rate').value) || 0;
+
+            if (!desc) {
+                alert(t('item_description_required'));
+                return;
+            }
+
+            const amount = (qty * rate) + (hours * rate);
+            // If hours > 0, mark as labor
+            const is_labor = hours > 0 ? 1 : 0;
+            invItems.push({ description: desc, part_number: part, qty, hours, rate, amount, is_labor: is_labor });
+            renderInvItems();
+            document.getElementById('inv-item-desc').value = '';
+            document.getElementById('inv-item-part').value = '';
+            document.getElementById('inv-item-qty').value = '1';
+            document.getElementById('inv-item-hours').value = '0';
+            document.getElementById('inv-item-rate').value = '0';
+        }
+
+        function removeInvItem(index) {
+            invItems.splice(index, 1);
+            renderInvItems();
+        }
+
+        function renderInvItems() {
+            const tbody = document.getElementById('inv-items-body');
+            tbody.innerHTML = invItems.map((item, i) => `
+                <tr>
+                    <td>${item.description} ${item.is_labor ? '🛠️' : ''}</td>
+                    <td>${item.part_number || ''}</td>
+                    <td>${item.qty}</td>
+                    <td>${item.hours}</td>
+                    <td>$${item.rate}</td>
+                    <td>$${item.amount.toFixed(2)}</td>
+                    <td><button class="btn btn-danger" style="padding:0 6px;font-size:10px;" onclick="removeInvItem(${i})">×</button></td>
+                </tr>
+            `).join('');
+        }
+
+        function generateInvoiceNo() {
+            return 'INV-' + String(Math.floor(Math.random() * 90000) + 10000);
+        }
+
+        function saveInvoice(e) {
+            e.preventDefault();
+            const customer = document.getElementById('inv-customer').value.trim();
+            const vin = document.getElementById('inv-vin').value.trim().toUpperCase();
+
+            if (!customer) { alert(t('customer_required')); return; }
+            if (!vin || !/^[A-Z0-9]{4,6}$/.test(vin)) { alert(t('vin_required')); return; }
+            if (invItems.length === 0) { alert(t('items_required')); return; }
+
+            const data = {
+                invoice_no: document.getElementById('inv-no').value,
+                invoice_date: document.getElementById('inv-date').value,
+                customer_name: customer,
+                truck_no: document.getElementById('inv-truck').value,
+                vin: vin,
+                work_order_id: document.getElementById('inv-wo').value || null,
+                labor_cost: parseFloat(document.getElementById('inv-labor-cost').value) || 0,
+                tax_rate: parseFloat(document.getElementById('inv-tax').value) || 7.30,
+                paid: parseFloat(document.getElementById('inv-paid').value) || 0,
+                items: invItems
+            };
+
+            fetch('/api/invoices', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(`${t('save_success')} Invoice: ${result.invoice_no}`);
+                closeModal();
+                searchInvoices();
+                invItems = [];
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function editInvoice(id) {
+            fetch(`/api/invoices/${id}`)
+                .then(r => r.json())
+                .then(inv => {
+                    if (inv.error) { alert(inv.error); return; }
+                    showModal(`
+                        <h3 style="color:#d63031;margin-bottom:16px;">${t('invoices')} - ${t('update')}</h3>
+                        <form id="inv-form" onsubmit="updateInvoice(event, ${id})">
+                            <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('invoice_no')}</label>
+                                    <input type="text" value="${inv.invoice_no}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;" readonly></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('date')}</label>
+                                    <input type="date" id="inv-date" value="${inv.invoice_date}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('customer_name')} *</label>
+                                    <input type="text" id="inv-customer" value="${inv.customer_name}" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('truck')}</label>
+                                    <input type="text" id="inv-truck" value="${inv.truck_no || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('vin_number')} *</label>
+                                    <input type="text" id="inv-vin" value="${inv.vin}" required style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;text-transform:uppercase;" maxlength="6"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('work_order_id')}</label>
+                                    <input type="number" id="inv-wo" value="${inv.work_order_id || ''}" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('labor_cost')}</label>
+                                    <input type="number" id="inv-labor-cost" value="${inv.labor}" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('tax_rate')}</label>
+                                    <input type="number" id="inv-tax" value="${inv.tax_rate}" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                                <div><label style="color:#b2bec3;font-size:12px;">${t('amount_paid')}</label>
+                                    <input type="number" id="inv-paid" value="${inv.paid}" step="0.01" style="width:100%;padding:6px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></div>
+                            </div>
+                            <hr style="border-color:#414a57;margin:12px 0;">
+                            <h4 style="color:#b2bec3;">${t('invoice_items')}</h4>
+                            <div style="overflow-x:auto; margin-bottom:8px;">
+                                <table style="font-size:12px;">
+                                    <thead><tr><th>${t('description')}</th><th>${t('part_no')}</th><th>${t('qty')}</th><th>${t('hours')}</th><th>${t('rate')}</th><th>${t('amount')}</th></tr></thead>
+                                    <tbody id="inv-items-body">
+                                        ${inv.items.map(item => `
+                                            <tr>
+                                                <td><input type="text" class="inv-item-desc" value="${item.description}" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="text" class="inv-item-part" value="${item.part_number || ''}" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="number" class="inv-item-qty" value="${item.qty}" step="0.5" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="number" class="inv-item-hours" value="${item.hours || 0}" step="0.5" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="number" class="inv-item-rate" value="${item.rate}" step="0.01" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                                <td><input type="number" class="inv-item-amount" value="${item.amount}" step="0.01" style="width:100%;padding:2px;background:#1e222b;border:1px solid #414a57;border-radius:4px;color:#fff;"></td>
+                                            </tr>
+                                        `).join('')}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div style="margin-top:12px; text-align:right;">
+                                <button type="submit" class="btn btn-primary">${t('update')}</button>
+                            </div>
+                        </form>
+                    `);
+                });
+        }
+
+        function updateInvoice(e, id) {
+            e.preventDefault();
+            const customer = document.getElementById('inv-customer').value.trim();
+            const vin = document.getElementById('inv-vin').value.trim().toUpperCase();
+
+            if (!customer) { alert(t('customer_required')); return; }
+            if (!vin || !/^[A-Z0-9]{4,6}$/.test(vin)) { alert(t('vin_required')); return; }
+
+            const descs = document.querySelectorAll('.inv-item-desc');
+            const parts = document.querySelectorAll('.inv-item-part');
+            const qtys = document.querySelectorAll('.inv-item-qty');
+            const hourss = document.querySelectorAll('.inv-item-hours');
+            const rates = document.querySelectorAll('.inv-item-rate');
+            const amounts = document.querySelectorAll('.inv-item-amount');
+
+            const items = [];
+            for (let i = 0; i < descs.length; i++) {
+                const desc = descs[i].value.trim();
+                if (desc) {
+                    const hours = parseFloat(hourss[i].value) || 0;
+                    items.push({
+                        description: desc,
+                        part_number: parts[i].value.trim() || '',
+                        qty: parseFloat(qtys[i].value) || 1,
+                        hours: hours,
+                        rate: parseFloat(rates[i].value) || 0,
+                        amount: parseFloat(amounts[i].value) || 0,
+                        is_labor: hours > 0 ? 1 : 0
+                    });
+                }
+            }
+
+            if (items.length === 0) { alert(t('items_required')); return; }
+
+            const data = {
+                invoice_date: document.getElementById('inv-date').value,
+                customer_name: customer,
+                truck_no: document.getElementById('inv-truck').value,
+                vin: vin,
+                work_order_id: document.getElementById('inv-wo').value || null,
+                labor_cost: parseFloat(document.getElementById('inv-labor-cost').value) || 0,
+                tax_rate: parseFloat(document.getElementById('inv-tax').value) || 7.30,
+                paid: parseFloat(document.getElementById('inv-paid').value) || 0,
+                items: items
+            };
+
+            fetch(`/api/invoices/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(t('update_success'));
+                closeModal();
+                searchInvoices();
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        // Keep the old function for the button outside the modal
+function loadFromWorkOrder() {
+    // Check if the invoice form is open
+    const woSelect = document.getElementById('inv-wo');
+    if (woSelect) {
+        // If the modal is open, use the combo version
+        loadFromWOCombo();
+    } else {
+        // If modal is not open, open it first
+        showAddInvoice();
+        // Wait a bit then trigger the combo
+        setTimeout(() => {
+            const select = document.getElementById('inv-wo');
+            if (select) {
+                // Focus the select so user can choose
+                select.focus();
+                alert('Please select a work order from the dropdown to load items.');
+            }
+        }, 500);
+    }
+}
+        function printInvoice(id) {
+            window.open(`/api/print/invoice/${id}`, '_blank');
+        }
+
+        // ============ USERS ============
+        function refreshUsers() {
+            fetch('/api/users')
+                .then(r => r.json())
+                .then(data => {
+                    const tbody = document.getElementById('user-body');
+                    if (data.error) {
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#b2bec3;">${data.error}</td></tr>`;
+                        return;
+                    }
+                    if (!data || data.length === 0) {
+                        tbody.innerHTML = `<tr><td colspan="4" style="text-align:center;color:#b2bec3;">${t('no_data')}</td></tr>`;
+                        return;
+                    }
+                    tbody.innerHTML = data.map(user => `
+                        <tr>
+                            <td>${user.username}</td>
+                            <td>${user.role}</td>
+                            <td>${user.active ? '✅' : '❌'}</td>
+                            <td>
+                                ${ROLE === 'admin' ? `<button class="btn btn-danger" style="padding:2px 8px;font-size:11px;" onclick="deleteUser(${user.id}, '${user.username}')">×</button>` : '' }
+                            </td>
+                        </tr>
+                    `).join('');
+                })
+                .catch(() => {
+                    document.getElementById('user-body').innerHTML = `<tr><td colspan="4" style="text-align:center;color:#b2bec3;">Error loading users</td></tr>`;
+                });
+        }
+
+        function createUser() {
+            const username = document.getElementById('new-username').value.trim();
+            const password = document.getElementById('new-password').value.trim();
+            const role = document.getElementById('new-role').value;
+
+            if (!username || !password) {
+                alert('Username and password are required.');
+                return;
+            }
+
+            fetch('/api/users', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ username, password, role })
+            })
+            .then(r => r.json())
+            .then(result => {
+                if (result.error) { alert(result.error); return; }
+                alert(`${t('save_success')} User: ${result.username}`);
+                document.getElementById('new-username').value = '';
+                document.getElementById('new-password').value = '';
+                refreshUsers();
+            })
+            .catch(() => alert(t('error')));
+        }
+
+        function deleteUser(id, username) {
+            if (!confirm(`Delete user ${username}?`)) return;
+            fetch(`/api/users/${id}`, { method: 'DELETE' })
+                .then(r => r.json())
+                .then(result => {
+                    if (result.error) { alert(result.error); return; }
+                    alert(t('delete_success'));
+                    refreshUsers();
+                })
+                .catch(() => alert(t('error')));
+        }
+
+        // ============ CHARTS ============
+        function loadCharts() {
+            // Only load charts if the canvas elements exist (admin only)
+            const stockChartEl = document.getElementById('stockChart');
+            const trendChartEl = document.getElementById('trendChart');
+
+            if (!stockChartEl || !trendChartEl) return;
+
+            fetch('/api/chart_data')
+                .then(r => r.json())
+                .then(data => {
+                    const ctx1 = stockChartEl.getContext('2d');
+                    new Chart(ctx1, {
+                        type: 'bar',
+                        data: {
+                            labels: data.labels,
+                            datasets: [
+                                {
+                                    label: t('current_stock'),
+                                    data: data.stocks,
+                                    backgroundColor: data.stocks.map((s, i) => s <= data.reorders[i] ? '#ff4444' : '#2ed573'),
+                                    borderColor: '#2d3436',
+                                    borderWidth: 1
+                                },
+                                {
+                                    label: t('reorder_point'),
+                                    data: data.reorders,
+                                    backgroundColor: '#ff9f43',
+                                    borderColor: '#2d3436',
+                                    borderWidth: 1
+                                }
+                            ]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { labels: { color: '#b2bec3' } }
+                            },
+                            scales: {
+                                x: { ticks: { color: '#b2bec3' }, grid: { color: '#414a5744' } },
+                                y: { ticks: { color: '#b2bec3' }, grid: { color: '#414a5744' } }
+                            }
+                        }
+                    });
+
+                    const ctx2 = trendChartEl.getContext('2d');
+                    new Chart(ctx2, {
+                        type: 'line',
+                        data: {
+                            labels: data.labels,
+                            datasets: [{
+                                label: t('stock_distribution'),
+                                data: data.stocks,
+                                backgroundColor: '#d6303144',
+                                borderColor: '#d63031',
+                                borderWidth: 2,
+                                tension: 0.3,
+                                pointBackgroundColor: '#d63031'
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: { labels: { color: '#b2bec3' } }
+                            },
+                            scales: {
+                                x: { ticks: { color: '#b2bec3' }, grid: { color: '#414a5744' } },
+                                y: { ticks: { color: '#b2bec3' }, grid: { color: '#414a5744' } }
+                            }
+                        }
+                    });
+                });
+        }
+
+        // ============ AUTO REFRESH ============
+        function updateLowStock() {
+            fetch('/api/low_stock')
+                .then(r => r.json())
+                .then(items => {
+                    const alert = document.getElementById('lowStockAlert');
+                    const text = document.getElementById('lowStockText');
+                    const itemsDiv = document.getElementById('lowStockItems');
+                    if (items && items.length > 0) {
+                        alert.classList.add('show');
+                        text.textContent = t('low_stock_alert').replace('{count}', items.length);
+                        itemsDiv.innerHTML = items.map(item =>
+                            `<div class="low-stock-item">🔴 ${item.part} - ${item.description}: ${item.stock} (Reorder: ${item.reorder})</div>`
+                        ).join('');
+                    } else {
+                        alert.classList.remove('show');
+                        text.textContent = t('all_stock_healthy');
+                        itemsDiv.innerHTML = '';
+                    }
+                });
+        }
+
+        // ============ INIT ============
+        // Load all data
+        searchWorkOrders();
+        searchInventory();
+        searchInvoices();
+        refreshUsers();
+        loadCharts();
+        updateLowStock();
+
+        // Refresh every 60 seconds
+        setInterval(() => {
+            searchWorkOrders();
+            searchInventory();
+            searchInvoices();
+            updateLowStock();
+        }, 60000);
+    </script>
+</body>
+</html>

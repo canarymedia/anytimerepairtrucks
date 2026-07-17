@@ -1,0 +1,119 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-people"></i> User Management</h2>
+
+<div class="card-custom">
+    <h5 class="card-title">Create New User</h5>
+    <div class="row g-3">
+        <div class="col-md-3">
+            <label class="form-label">Username</label>
+            <input type="text" class="form-control form-control-custom" id="newUsername" placeholder="Username">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Password</label>
+            <input type="password" class="form-control form-control-custom" id="newPassword" placeholder="Password">
+        </div>
+        <div class="col-md-3">
+            <label class="form-label">Role</label>
+            <select class="form-control form-control-custom" id="newRole">
+                {% for role in roles %}
+                <option value="{{ role }}">{{ role|title }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+            <button class="btn btn-success-custom w-100" onclick="createUser()"><i class="bi bi-person-plus"></i> Create User</button>
+        </div>
+    </div>
+</div>
+
+<div class="card-custom">
+    <h5 class="card-title">Users List</h5>
+    <div class="table-responsive-custom">
+        <table class="table table-custom">
+            <thead>
+                <tr>
+                    <th>Username</th>
+                    <th>Role</th>
+                    <th>Status</th>
+                    <th>Actions</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for user in users %}
+                <tr>
+                    <td><strong>{{ user.username }}</strong></td>
+                    <td><span class="badge-role {{ user.role }}">{{ user.role|title }}</span></td>
+                    <td>
+                        {% if user.active %}
+                        <span class="badge-active"><i class="bi bi-check-circle"></i> Active</span>
+                        {% else %}
+                        <span class="badge-inactive"><i class="bi bi-x-circle"></i> Inactive</span>
+                        {% endif %}
+                    </td>
+                    <td>
+                        <button class="btn btn-sm btn-outline-light" onclick="toggleUser({{ user.id }})">
+                            <i class="bi bi-arrow-repeat"></i> Toggle
+                        </button>
+                        {% if user.username != 'admin' %}
+                        <button class="btn btn-sm btn-danger" onclick="deleteUser({{ user.id }})">
+                            <i class="bi bi-trash"></i>
+                        </button>
+                        {% endif %}
+                    </td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+function createUser() {
+    const username = document.getElementById('newUsername').value.trim();
+    const password = document.getElementById('newPassword').value.trim();
+    const role = document.getElementById('newRole').value;
+    
+    if (!username || !password) {
+        alert('Username and password required');
+        return;
+    }
+    
+    fetch('/api/users', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({username, password, role})
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert(data.error || 'Error creating user');
+        }
+    });
+}
+
+function toggleUser(id) {
+    fetch(`/api/users/${id}/toggle`)
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+}
+
+function deleteUser(id) {
+    if (!confirm('Delete this user?')) return;
+    fetch(`/api/users/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                location.reload();
+            }
+        });
+}
+</script>
+{% endblock %}

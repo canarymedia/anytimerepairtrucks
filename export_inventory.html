@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Inventory Report</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 20px; }
+        .header { background: #1a1a2e; padding: 20px; border-radius: 10px; margin-bottom: 20px; color: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th { background: #1a1a2e; color: white; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .low-stock { background: #ffeeee; }
+        .footer { margin-top: 20px; text-align: center; color: #666; }
+        @media print {
+            body { padding: 0; }
+            .header { background: #1a1a2e !important; color: white !important; }
+            th { background: #1a1a2e !important; color: white !important; }
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>ANYTIME REPAIR - Inventory Report</h1>
+        <p>Generated: {{ now.strftime("%Y-%m-%d %H:%M") }}</p>
+    </div>
+    <table>
+        <thead>
+            <tr>
+                <th>Part #</th>
+                <th>Description</th>
+                <th>Engine Type</th>
+                <th>Barcode</th>
+                <th>Stock</th>
+                <th>Reorder Point</th>
+                <th>Rate</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for p in parts %}
+            <tr class="{% if p.stock <= p.reorder_point %}low-stock{% endif %}">
+                <td><strong>{{ p.part_number }}</strong></td>
+                <td>{{ p.description }}</td>
+                <td>{{ p.engine_type }}</td>
+                <td>{{ p.barcode or '' }}</td>
+                <td>{{ p.stock }}</td>
+                <td>{{ p.reorder_point }}</td>
+                <td>${{ "%.2f"|format(p.rate) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+    <div class="footer">
+        AnyTime Repair LLC - 7330 COUNTY RD 101, SHAKOPEE MN 55379
+    </div>
+</body>
+</html>

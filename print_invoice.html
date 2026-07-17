@@ -1,0 +1,118 @@
+<!-- templates/print_invoice.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Invoice {{ invoice.invoice_no }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; padding: 40px; background: #ffffff; color: #333; }
+        .header { background: #1a1a2e; padding: 20px; border-radius: 10px; margin-bottom: 20px; display: flex; align-items: center; }
+        .logo-text { font-size: 28px; font-weight: bold; color: #ffd700; }
+        .logo-sub { font-size: 22px; font-weight: bold; color: #00d4ff; }
+        .company-info { margin-left: auto; text-align: right; color: #aaa; font-size: 11px; }
+        .invoice-title { font-size: 28px; font-weight: bold; color: #d63031; }
+        .bill-to { background: #f5f5f5; padding: 15px; margin: 15px 0; border-radius: 5px; }
+        table { width: 100%; border-collapse: collapse; margin: 15px 0; }
+        th { background: #1a1a2e; color: white; padding: 10px; text-align: left; }
+        td { padding: 10px; border-bottom: 1px solid #ddd; }
+        .summary { margin-top: 20px; text-align: right; padding: 15px; background: #f5f5f5; border-radius: 5px; }
+        .aging { background: #f5f5f5; padding: 15px; margin-top: 20px; border-radius: 5px; }
+        .footer { margin-top: 30px; text-align: center; color: #666; font-size: 12px; border-top: 1px solid #ddd; padding-top: 20px; }
+        @media print { body { padding: 20px; } .no-print { display: none; } }
+        .logo-container { display: flex; align-items: center; gap: 15px; }
+    </style>
+</head>
+<body>
+    <div class="no-print" style="text-align:right; margin-bottom:12px;">
+        <button onclick="window.print()">🖨 Print</button>
+        <button onclick="window.close()">✕ Close</button>
+    </div>
+
+    <div class="header">
+        <div class="logo-container">
+            <div>
+                <div class="logo-text">ANYTIME</div>
+                <div class="logo-sub">REPAIR</div>
+            </div>
+        </div>
+        <div class="company-info">
+            <div>7330 COUNTY RD 101</div>
+            <div>SHAKOPEE MN 55379</div>
+            <div>612-442-2928</div>
+        </div>
+    </div>
+
+    <div style="display: flex; justify-content: space-between; margin: 20px 0;">
+        <div class="invoice-title">{{ LANGUAGES[lang]['invoice'] }}</div>
+        <div style="text-align: right;">
+            <div><strong>{{ LANGUAGES[lang]['invoice_no'] }}:</strong> {{ invoice.invoice_no }}</div>
+            <div><strong>{{ LANGUAGES[lang]['date'] }}:</strong> {{ invoice.invoice_date }}</div>
+        </div>
+    </div>
+
+    <div class="bill-to">
+        <strong>{{ LANGUAGES[lang]['bill_to'] }}</strong><br>
+        {{ invoice.customer_name }}<br>
+        {{ LANGUAGES[lang]['truck'] }}: {{ invoice.truck_no or '' }}<br>
+        VIN: {{ invoice.vin }}
+        {% if invoice.work_order_id %}<br>Work Order: {{ invoice.work_order_id }}{% endif %}
+    </div>
+
+    <table>
+        <thead>
+            <tr>
+                <th>{{ LANGUAGES[lang]['description'] }}</th>
+                <th>{{ LANGUAGES[lang]['part_no'] }}</th>
+                <th>{{ LANGUAGES[lang]['qty'] }}</th>
+                <th>{{ LANGUAGES[lang]['hours'] }}</th>
+                <th>{{ LANGUAGES[lang]['rate'] }}</th>
+                <th>{{ LANGUAGES[lang]['amount'] }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for item in items %}
+            <tr>
+                <td>{{ item.description }}</td>
+                <td>{{ item.part_number or '' }}</td>
+                <td>{{ item.qty if item.qty else '' }}</td>
+                <td>{{ "%.2f"|format(item.hours) if item.hours else '' }}</td>
+                <td>${{ "%.2f"|format(item.rate) }}</td>
+                <td>${{ "%.2f"|format(item.amount) }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    <div class="summary">
+        <div><strong>{{ LANGUAGES[lang]['sub_total'] }}:</strong> ${{ "%.2f"|format(invoice.subtotal) }}</div>
+        <div><strong>{{ LANGUAGES[lang]['labor'] }}:</strong> ${{ "%.2f"|format(invoice.labor) }}</div>
+        <div><strong>{{ invoice.tax_rate }}% {{ LANGUAGES[lang]['tax'] }}:</strong> ${{ "%.2f"|format(invoice.tax) }}</div>
+        <div style="font-size: 20px; font-weight: bold; color: #d63031;"><strong>{{ LANGUAGES[lang]['total'] }}:</strong> ${{ "%.2f"|format(invoice.total) }}</div>
+        <div><strong>{{ LANGUAGES[lang]['amount_paid'] }}:</strong> ${{ "%.2f"|format(invoice.paid) }}</div>
+        <div style="font-size: 18px; font-weight: bold;"><strong>{{ LANGUAGES[lang]['amount_due'] }}:</strong> ${{ "%.2f"|format(invoice.balance) }}</div>
+    </div>
+
+    <div class="aging">
+        <table>
+            <tr>
+                <th>{{ LANGUAGES[lang]['days_30'] }}</th>
+                <th>{{ LANGUAGES[lang]['days_60'] }}</th>
+                <th>{{ LANGUAGES[lang]['days_90'] }}</th>
+                <th>{{ LANGUAGES[lang]['days_90_plus'] }}</th>
+                <th>{{ LANGUAGES[lang]['total'] }}</th>
+            </tr>
+            <tr>
+                <td>${{ "%.2f"|format(invoice.total if invoice.balance > 0 else 0) }}</td>
+                <td>$0.00</td>
+                <td>$0.00</td>
+                <td>$0.00</td>
+                <td>${{ "%.2f"|format(invoice.total) }}</td>
+            </tr>
+        </table>
+    </div>
+
+    <div class="footer">
+        {{ LANGUAGES[lang]['thank_you'] }}<br>
+        AnyTime Repair LLC - 7330 COUNTY RD 101, SHAKOPEE MN 55379
+    </div>
+</body>
+</html>

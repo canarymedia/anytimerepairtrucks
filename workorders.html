@@ -1,0 +1,469 @@
+{% extends "base.html" %}
+{% block content %}
+<h2 class="mb-4"><i class="bi bi-clipboard"></i> Work Orders</h2>
+
+<div class="card-custom">
+    <div class="row">
+        <div class="col-md-8">
+            <div class="input-group">
+                <input type="text" class="form-control form-control-custom" id="woSearch" placeholder="Search...">
+                <button class="btn btn-primary-custom" onclick="searchWorkOrders()"><i class="bi bi-search"></i></button>
+                <button class="btn btn-outline-secondary" onclick="clearSearch()"><i class="bi bi-x"></i></button>
+            </div>
+        </div>
+        <div class="col-md-4 text-end">
+            <button class="btn btn-success-custom" onclick="refreshParts()"><i class="bi bi-arrow-clockwise"></i> Refresh</button>
+        </div>
+    </div>
+</div>
+
+{% if not is_mechanic %}
+<div class="card-custom">
+    <h5 class="card-title">Order Details</h5>
+    <form id="woForm">
+        <input type="hidden" id="woId" value="">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Order #</label>
+                <input type="text" class="form-control form-control-custom" id="woOrderNo" value="{{ next_order_no }}" readonly>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-control form-control-custom" id="woDate" value="{{ now.strftime('%Y-%m-%d') }}">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Customer</label>
+                <input type="text" class="form-control form-control-custom" id="woCustomer" placeholder="Customer name">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Company</label>
+                <input type="text" class="form-control form-control-custom" id="woCompany" placeholder="Company name">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Phone</label>
+                <input type="text" class="form-control form-control-custom" id="woPhone" placeholder="Phone number">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Driver</label>
+                <input type="text" class="form-control form-control-custom" id="woDriver" placeholder="Driver name">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Truck #</label>
+                <input type="text" class="form-control form-control-custom" id="woTruck" placeholder="Truck number">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">VIN</label>
+                <input type="text" class="form-control form-control-custom" id="woVin" placeholder="VIN">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Status</label>
+                <select class="form-control form-control-custom" id="woStatus">
+                    <option value="open">Open</option>
+                    <option value="in_progress">In Progress</option>
+                    <option value="completed">Completed</option>
+                    <option value="cancelled">Cancelled</option>
+                </select>
+            </div>
+        </div>
+    </form>
+</div>
+
+<div class="card-custom">
+    <h5 class="card-title">Items</h5>
+    <div class="row g-2">
+        <div class="col-md-4">
+            <input type="text" class="form-control form-control-custom" id="woItemDesc" placeholder="Description">
+        </div>
+        <div class="col-md-2">
+            <select class="form-control form-control-custom part-select" id="woItemPart">
+                <option value="">Select Part...</option>
+                {% for part in parts %}
+                <option value="{{ part.part_number }}">{{ part.part_number }} - {{ part.description }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-1">
+            <input type="number" class="form-control form-control-custom" id="woItemQty" value="1" step="0.1">
+        </div>
+        <div class="col-md-1">
+            <input type="number" class="form-control form-control-custom" id="woItemHours" value="0" step="0.1">
+        </div>
+        <div class="col-md-2">
+            <input type="text" class="form-control form-control-custom" id="woItemMechanic" placeholder="Mechanic">
+        </div>
+        <div class="col-md-2">
+            <button class="btn btn-success-custom w-100" onclick="addWOItem()"><i class="bi bi-plus"></i> Add</button>
+        </div>
+    </div>
+    <div class="table-responsive-custom mt-3">
+        <table class="table table-custom table-sm" id="woItemsTable">
+            <thead>
+                <tr>
+                    <th>Description</th>
+                    <th>Part #</th>
+                    <th>Qty</th>
+                    <th>Hours</th>
+                    <th>Mechanic</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody id="woItemsBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<div class="card-custom">
+    <div class="row">
+        <div class="col-md-12">
+            <button class="btn btn-primary-custom" onclick="saveWO()"><i class="bi bi-save"></i> Save</button>
+            <button class="btn btn-orange-custom" onclick="updateWO()"><i class="bi bi-pencil"></i> Update</button>
+            {% if can_print %}
+            <button class="btn btn-info" onclick="printWO()"><i class="bi bi-printer"></i> Print PDF</button>
+            {% endif %}
+            <button class="btn btn-secondary" onclick="clearWO()"><i class="bi bi-eraser"></i> Clear</button>
+            <button class="btn btn-danger" onclick="deleteWO()"><i class="bi bi-trash"></i> Delete</button>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="card-custom">
+    <h5 class="card-title text-muted">Work Order Details (View Only)</h5>
+    <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> Mechanics can only view work orders. No editing or financial data is visible.
+    </div>
+</div>
+{% endif %}
+
+<div class="card-custom">
+    <h5 class="card-title">Work Orders List</h5>
+    <div class="table-responsive-custom">
+        <table class="table table-custom" id="woListTable">
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Order #</th>
+                    <th>Date</th>
+                    <th>Customer</th>
+                    <th>Truck</th>
+                    <th>VIN</th>
+                    <th>Status</th>
+                </tr>
+            </thead>
+            <tbody id="woListBody">
+                <tr><td colspan="7" class="text-muted">Loading work orders...</td></tr>
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<script>
+let woItems = [];
+let partData = {{ parts|tojson }};
+let isMechanic = {{ is_mechanic|tojson }};
+
+function refreshParts() {
+    fetch('/api/parts')
+        .then(r => r.json())
+        .then(data => {
+            partData = data;
+            const select = document.getElementById('woItemPart');
+            select.innerHTML = '<option value="">Select Part...</option>';
+            data.forEach(part => {
+                const option = document.createElement('option');
+                option.value = part.part_number;
+                option.textContent = part.part_number + ' - ' + part.description;
+                select.appendChild(option);
+            });
+        });
+}
+
+function addWOItem() {
+    if (isMechanic) {
+        alert('Mechanics cannot add items');
+        return;
+    }
+    const desc = document.getElementById('woItemDesc').value.trim();
+    const part = document.getElementById('woItemPart').value;
+    const qty = parseFloat(document.getElementById('woItemQty').value) || 1;
+    const hours = parseFloat(document.getElementById('woItemHours').value) || 0;
+    const mechanic = document.getElementById('woItemMechanic').value.trim();
+
+    if (!desc) {
+        alert('Enter item description');
+        return;
+    }
+
+    let rate = 0;
+    if (part) {
+        const found = partData.find(p => p.part_number === part);
+        if (found) rate = found.rate;
+    }
+
+    const amount = (qty * rate) + (hours * rate);
+    woItems.push({description: desc, part_number: part, qty, hours, rate, amount, mechanic});
+    renderWOItems();
+
+    document.getElementById('woItemDesc').value = '';
+    document.getElementById('woItemPart').value = '';
+    document.getElementById('woItemQty').value = '1';
+    document.getElementById('woItemHours').value = '0';
+    document.getElementById('woItemMechanic').value = '';
+}
+
+function renderWOItems() {
+    const tbody = document.getElementById('woItemsBody');
+    tbody.innerHTML = '';
+    woItems.forEach((item, index) => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.description}</td>
+            <td>${item.part_number || ''}</td>
+            <td>${item.qty}</td>
+            <td>${item.hours ? item.hours.toFixed(2) : ''}</td>
+            <td>${item.mechanic || ''}</td>
+            <td>${!isMechanic ? `<button class="btn btn-sm btn-danger" onclick="removeWOItem(${index})"><i class="bi bi-x"></i></button>` : ''}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function removeWOItem(index) {
+    if (isMechanic) return;
+    woItems.splice(index, 1);
+    renderWOItems();
+}
+
+function getWOData() {
+    return {
+        order_no: document.getElementById('woOrderNo').value,
+        order_date: document.getElementById('woDate').value,
+        customer_name: document.getElementById('woCustomer').value,
+        company_name: document.getElementById('woCompany').value,
+        company_phone: document.getElementById('woPhone').value,
+        driver_name: document.getElementById('woDriver').value,
+        truck_no: document.getElementById('woTruck').value,
+        vin: document.getElementById('woVin').value,
+        status: document.getElementById('woStatus').value,
+        paid: 0
+    };
+}
+
+function saveWO() {
+    if (isMechanic) {
+        alert('Mechanics cannot save work orders');
+        return;
+    }
+    const data = getWOData();
+    if (!data.customer_name) {
+        alert('Customer name is required');
+        return;
+    }
+    if (woItems.length === 0) {
+        alert('Add at least one item');
+        return;
+    }
+    data.items = woItems;
+    data.work_order_id = null;
+
+    fetch('/api/workorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            clearWO();
+            loadWorkOrders();
+        } else {
+            alert(data.error || 'Error saving');
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+    });
+}
+
+function updateWO() {
+    if (isMechanic) {
+        alert('Mechanics cannot update work orders');
+        return;
+    }
+    const id = document.getElementById('woId').value;
+    if (!id) {
+        alert('Select a work order to update');
+        return;
+    }
+    const data = getWOData();
+    if (!data.customer_name) {
+        alert('Customer name is required');
+        return;
+    }
+    if (woItems.length === 0) {
+        alert('Add at least one item');
+        return;
+    }
+    data.items = woItems;
+    data.work_order_id = parseInt(id);
+
+    fetch('/api/workorder', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            clearWO();
+            loadWorkOrders();
+        } else {
+            alert(data.error || 'Error updating');
+        }
+    })
+    .catch(err => {
+        alert('Error: ' + err.message);
+    });
+}
+
+function clearWO() {
+    document.getElementById('woId').value = '';
+    document.getElementById('woOrderNo').value = '{{ next_order_no }}';
+    document.getElementById('woDate').value = new Date().toISOString().split('T')[0];
+    document.getElementById('woCustomer').value = '';
+    document.getElementById('woCompany').value = '';
+    document.getElementById('woPhone').value = '';
+    document.getElementById('woDriver').value = '';
+    document.getElementById('woTruck').value = '';
+    document.getElementById('woVin').value = '';
+    document.getElementById('woStatus').value = 'open';
+    woItems = [];
+    renderWOItems();
+    loadWorkOrders();
+}
+
+function deleteWO() {
+    if (isMechanic) {
+        alert('Mechanics cannot delete work orders');
+        return;
+    }
+    const id = document.getElementById('woId').value;
+    if (!id) {
+        alert('Select a work order to delete');
+        return;
+    }
+    if (!confirm('Delete this work order?')) return;
+
+    fetch(`/api/workorder/${id}`, {method: 'DELETE'})
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                alert('Deleted successfully');
+                clearWO();
+                loadWorkOrders();
+            }
+        });
+}
+
+function loadWorkOrders() {
+    const search = document.getElementById('woSearch').value;
+    fetch(`/api/workorders?search=${encodeURIComponent(search)}`)
+        .then(r => r.json())
+        .then(data => {
+            const tbody = document.getElementById('woListBody');
+            tbody.innerHTML = '';
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" class="text-muted">No work orders found. Create your first work order!</td></tr>';
+                return;
+            }
+            data.forEach(order => {
+                const tr = document.createElement('tr');
+                tr.innerHTML = `
+                    <td>${order.work_order_id}</td>
+                    <td>${order.order_no}</td>
+                    <td>${order.order_date}</td>
+                    <td>${order.customer_name}</td>
+                    <td>${order.truck_no || ''}</td>
+                    <td>${order.vin || ''}</td>
+                    <td><span class="badge-status ${order.status}">${order.status.replace('_', ' ').title()}</span></td>
+                `;
+                tr.style.cursor = 'pointer';
+                tr.onclick = () => loadWO(order.work_order_id);
+                tbody.appendChild(tr);
+            });
+        })
+        .catch(err => {
+            console.error('Error loading work orders:', err);
+            document.getElementById('woListBody').innerHTML = '<tr><td colspan="7" class="text-danger">Error loading work orders</td></tr>';
+        });
+}
+
+function loadWO(id) {
+    fetch(`/api/workorder/${id}`)
+        .then(r => r.json())
+        .then(data => {
+            const order = data.order;
+            document.getElementById('woId').value = order.work_order_id;
+            document.getElementById('woOrderNo').value = order.order_no;
+            document.getElementById('woDate').value = order.order_date;
+            document.getElementById('woCustomer').value = order.customer_name;
+            document.getElementById('woCompany').value = order.company_name || '';
+            document.getElementById('woPhone').value = order.company_phone || '';
+            document.getElementById('woDriver').value = order.driver_name || '';
+            document.getElementById('woTruck').value = order.truck_no || '';
+            document.getElementById('woVin').value = order.vin || '';
+            document.getElementById('woStatus').value = order.status;
+
+            woItems = data.items.map(item => ({
+                description: item.description,
+                part_number: item.part_number,
+                qty: item.qty,
+                hours: item.hours,
+                rate: 0,
+                amount: 0,
+                mechanic: item.mechanic
+            }));
+            renderWOItems();
+        })
+        .catch(err => {
+            console.error('Error loading work order:', err);
+            alert('Error loading work order');
+        });
+}
+
+function searchWorkOrders() {
+    loadWorkOrders();
+}
+
+function clearSearch() {
+    document.getElementById('woSearch').value = '';
+    loadWorkOrders();
+}
+
+function printWO() {
+    const id = document.getElementById('woId').value;
+    if (!id) {
+        alert('Select a work order to print');
+        return;
+    }
+    window.open(`/api/workorder/${id}/pdf`, '_blank');
+}
+
+document.getElementById('woItemPart').addEventListener('change', function() {
+    const part = this.value;
+    if (part) {
+        const found = partData.find(p => p.part_number === part);
+        if (found) {
+            document.getElementById('woItemDesc').value = found.description;
+        }
+    }
+});
+
+document.getElementById('woVin').addEventListener('input', function() {
+    this.value = this.value.toUpperCase().replace(/[^A-Z0-9]/g, '').slice(0, 6);
+});
+
+loadWorkOrders();
+</script>
+{% endblock %}
